@@ -23,12 +23,14 @@ std::string getTime();
  *  */
 User getUser(SOCKET clientSocket);
 
+void acceptClients(SOCKET serverSocket);
+
 void handleClient(SOCKET clientSocket);
 
 
 int main() {
 	WSADATA wsaData;
-	SOCKET serverSocket, clientSocket;
+	SOCKET serverSocket;
 	sockaddr_in serverAddr{}, clientAddr{};
 
 	// Initialize Winsock
@@ -62,19 +64,24 @@ int main() {
 	listen(serverSocket, SOMAXCONN);
 	std::cout << "Server listening on port 54000...\n";
 
+	std::thread acceptThread(acceptClients, serverSocket);
 
+	std::string input{};
 	while (true) {
-		clientSocket = accept(serverSocket, nullptr, nullptr);
+		std::getline(std::cin, input);
+		if (input == "exit") break;
 
-		if (clientSocket != INVALID_SOCKET) {
+		input = std::format("<{}>[SERVER]: {}\n", getTime(), input);
 
-			std::thread clientThread(handleClient, clientSocket);
-			clientThread.detach(); // let it run independently
+		if (!CLIENTS.empty()) {
+			for (const auto& client : CLIENTS) {
+				send(client.clientSocket, input.c_str(), input.size(), 0);
+			}
 		}
 	}
 
 	// Cleanup
-	closesocket(clientSocket);
+	//closesocket(clientSocket);
 	closesocket(serverSocket);
 	WSACleanup();
 	return 0;
@@ -111,6 +118,20 @@ User getUser(SOCKET clientSocket) {
 	return User(msg, clientSocket);
 }
 
+void acceptClients(SOCKET serverSocket) {
+	SOCKET clientSocket;
+
+	while (true) {
+		clientSocket = accept(serverSocket, nullptr, nullptr);
+
+		if (clientSocket != INVALID_SOCKET) {
+
+			std::thread clientThread(handleClient, clientSocket);
+			clientThread.detach(); // let it run independently
+		}
+	}
+}
+
 void handleClient(SOCKET clientSocket) {
 	char buffer[1024];
 	ZeroMemory(buffer, sizeof(buffer));
@@ -127,7 +148,7 @@ void handleClient(SOCKET clientSocket) {
 		if (bytesReceived > 0) {
 			Message msg{ std::string(buffer, bytesReceived), getTime() };
 
-			std::string output = std::format("<{}> {}: {}\n", msg.timeStamp, user.username, msg.message);
+			std::string output = std::format("<{}>[{}]: {}\n", msg.timeStamp, user.username, msg.message);
 			std::cout << output;
 
 			// Echo back
