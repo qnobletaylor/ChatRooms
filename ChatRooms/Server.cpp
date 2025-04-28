@@ -1,24 +1,50 @@
 #include <iostream>
 #include <winsock2.h>
 #include <thread>
-#include <vector>;
+#include <vector>
+#include <format>
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
+import User;
 
-std::vector<SOCKET> CLIENTS{};
+std::vector<User> CLIENTS{};
+
+User getUser(SOCKET clientSocket) {
+	char buffer[1024];
+	int bytesReceived{};
+	ZeroMemory(buffer, sizeof(buffer));
+	std::string prompt = "Server: Enter a UserName\n";
+
+	do {
+		send(clientSocket, prompt.c_str(), prompt.size(), 0);
+
+		bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+	} while (bytesReceived <= 0);
+
+	std::string msg(buffer, bytesReceived);
+
+	return User(msg, clientSocket);
+}
 
 void handleClient(SOCKET clientSocket) {
 	char buffer[1024];
+	ZeroMemory(buffer, sizeof(buffer));
+
+	User user = getUser(clientSocket);
+
+	CLIENTS.push_back(user);
+
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
 			std::string msg(buffer, bytesReceived);
-			std::cout << "Client says: " << msg << "\n";
+			std::string output = std::format("{}: {}\n", user.userName, msg);
+			std::cout << output;
 
 			// Echo back
 			for (const auto& client : CLIENTS) {
-				send(client, buffer, bytesReceived, 0);
+				send(client.userSocket, output.c_str(), output.size(), 0);
 			}
 
 		}
@@ -40,8 +66,8 @@ int main() {
 	WSADATA wsaData;
 	SOCKET serverSocket, clientSocket;
 	sockaddr_in serverAddr{}, clientAddr{};
-	char buffer[1024];
-	int clientSize;
+	//char buffer[1024];
+	//int clientSize;
 
 	// Initialize Winsock
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
@@ -77,9 +103,10 @@ int main() {
 	//std::vector<SOCKET> clients{};
 
 	while (true) {
-		SOCKET clientSocket = accept(serverSocket, nullptr, nullptr);
-		CLIENTS.push_back(clientSocket);
+		clientSocket = accept(serverSocket, nullptr, nullptr);
+
 		if (clientSocket != INVALID_SOCKET) {
+
 			std::cout << "Client connected.\n";
 			std::thread clientThread(handleClient, clientSocket);
 			clientThread.detach(); // let it run independently

@@ -14,7 +14,7 @@ void receiveMessages(SOCKET sock) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
-			std::cout << "\nServer: " << std::string(buffer, bytesReceived) << "\n> ";
+			std::cout << std::string(buffer, bytesReceived);
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Server disconnected.\n";
