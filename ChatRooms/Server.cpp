@@ -16,84 +16,20 @@ std::vector<User> CLIENTS{}; // Global variable for connected users
  *
  * I will likely move this function to client side. Also need to make it a bit more succint.
  *  */
-std::string getTime() {
-	time_t currentTime;
-	struct tm localTime;
-
-	currentTime = std::time(nullptr);
-	localtime_s(&localTime, &currentTime);
-	std::string min = ((localTime.tm_min / 10) == 0) ? ("0" + std::to_string(localTime.tm_min)) : std::to_string(localTime.tm_min);
-	std::string hour = ((localTime.tm_hour % 12) / 10) == 0 ? ("0" + std::to_string(localTime.tm_hour % 12)) : std::to_string(localTime.tm_hour % 12);
-	std::string sec = ((localTime.tm_sec / 10) == 0) ? ("0" + std::to_string(localTime.tm_sec)) : std::to_string(localTime.tm_sec);
-	std::string timeStamp = std::format("{}:{}:{}", hour, min, sec);
-
-	return timeStamp;
-}
+std::string getTime();
 
 /**
  * Asks a client for user information and saves their username alongside that client's socket
  *  */
-User getUser(SOCKET clientSocket) {
-	char buffer[1024];
-	int bytesReceived{};
-	ZeroMemory(buffer, sizeof(buffer));
-	std::string prompt = "Server: Enter a Username > ";
+User getUser(SOCKET clientSocket);
 
-	do {
-		send(clientSocket, prompt.c_str(), prompt.size(), 0);
-
-		bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-	} while (bytesReceived <= 0);
-
-	std::string msg(buffer, bytesReceived);
-
-	return User(msg, clientSocket);
-}
-
-void handleClient(SOCKET clientSocket) {
-	char buffer[1024];
-	ZeroMemory(buffer, sizeof(buffer));
-
-	User user = getUser(clientSocket);
-	std::cout << std::format("{} Connected to server.\n", user.userName);
-
-	CLIENTS.push_back(user);
-
-	while (true) {
-		ZeroMemory(buffer, sizeof(buffer));
-		int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-		std::string timeStamp = getTime();
-		if (bytesReceived > 0) {
-			std::string msg(buffer, bytesReceived);
-			std::string output = std::format("<{}> {}: {}\n", timeStamp, user.userName, msg);
-			std::cout << output;
-
-			// Echo back
-			for (const auto& client : CLIENTS) { // Does not send the message back to the user that sent it
-				if (clientSocket != client.clientSocket) send(client.clientSocket, output.c_str(), output.size(), 0);
-			}
-
-		}
-		else if (bytesReceived == 0) {
-			std::cout << "Client disconnected gracefully.\n";
-			break;
-		}
-		else {
-			std::cerr << "recv failed.\n";
-			break;
-		}
-	}
-
-	closesocket(clientSocket);
-}
+void handleClient(SOCKET clientSocket);
 
 
 int main() {
 	WSADATA wsaData;
 	SOCKET serverSocket, clientSocket;
 	sockaddr_in serverAddr{}, clientAddr{};
-	//char buffer[1024];
-	//int clientSize;
 
 	// Initialize Winsock
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
@@ -132,7 +68,6 @@ int main() {
 
 		if (clientSocket != INVALID_SOCKET) {
 
-			std::cout << "Client connected.\n";
 			std::thread clientThread(handleClient, clientSocket);
 			clientThread.detach(); // let it run independently
 		}
@@ -143,4 +78,73 @@ int main() {
 	closesocket(serverSocket);
 	WSACleanup();
 	return 0;
+}
+
+std::string getTime() {
+	time_t currentTime;
+	struct tm localTime;
+
+	currentTime = std::time(nullptr);
+	localtime_s(&localTime, &currentTime);
+	std::string min = ((localTime.tm_min / 10) == 0) ? ("0" + std::to_string(localTime.tm_min)) : std::to_string(localTime.tm_min);
+	std::string hour = ((localTime.tm_hour % 12) / 10) == 0 ? ("0" + std::to_string(localTime.tm_hour % 12)) : std::to_string(localTime.tm_hour % 12);
+	std::string sec = ((localTime.tm_sec / 10) == 0) ? ("0" + std::to_string(localTime.tm_sec)) : std::to_string(localTime.tm_sec);
+	std::string timeStamp = std::format("{}:{}:{}", hour, min, sec);
+
+	return timeStamp;
+}
+
+User getUser(SOCKET clientSocket) {
+	char buffer[1024];
+	int bytesReceived{};
+	ZeroMemory(buffer, sizeof(buffer));
+	std::string prompt = "Server: Enter a username > ";
+
+	do {
+		send(clientSocket, prompt.c_str(), prompt.size(), 0);
+
+		bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+	} while (bytesReceived <= 0);
+
+	std::string msg(buffer, bytesReceived);
+
+	return User(msg, clientSocket);
+}
+
+void handleClient(SOCKET clientSocket) {
+	char buffer[1024];
+	ZeroMemory(buffer, sizeof(buffer));
+
+	User user = getUser(clientSocket);
+	std::cout << std::format("{} Connected to server.\n", user.username);
+
+	CLIENTS.push_back(user);
+
+	while (true) {
+		ZeroMemory(buffer, sizeof(buffer));
+		int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+
+		if (bytesReceived > 0) {
+			Message msg{ std::string(buffer, bytesReceived), getTime() };
+
+			std::string output = std::format("<{}> {}: {}\n", msg.timeStamp, user.username, msg.message);
+			std::cout << output;
+
+			// Echo back
+			for (const auto& client : CLIENTS) { // Does not send the message back to the user that sent it
+				if (clientSocket != client.clientSocket) send(client.clientSocket, output.c_str(), output.size(), 0);
+			}
+
+		}
+		else if (bytesReceived == 0) {
+			std::cout << "Client disconnected gracefully.\n";
+			break;
+		}
+		else {
+			std::cerr << "recv failed.\n";
+			break;
+		}
+	}
+
+	closesocket(clientSocket);
 }

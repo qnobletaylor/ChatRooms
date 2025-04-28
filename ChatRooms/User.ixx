@@ -3,13 +3,12 @@ export module User;
 import <string>;
 import <WinSock2.h>;
 
-export class User {
-public:
-	std::string userName;
+export struct User {
+	std::string username;
 	SOCKET clientSocket;
+};
 
-	User(std::string userName, SOCKET clientSocket) {
-		this->userName = userName;
-		this->clientSocket = clientSocket;
-	}
+export struct Message {
+	std::string message;
+	std::string timeStamp;
 };

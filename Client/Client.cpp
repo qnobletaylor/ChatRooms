@@ -5,53 +5,20 @@
 #include <ws2tcpip.h>
 #include <format>
 #include <thread>
-#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "Ws2_32.lib");
 
 // Function to receive messages in a separate thread
-void receiveMessages(SOCKET sock) {
-	char buffer[1024];
-	while (true) {
-		ZeroMemory(buffer, sizeof(buffer));
-		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
-		if (bytesReceived > 0) {
-			std::cout << std::string(buffer, bytesReceived);
-		}
-		else if (bytesReceived == 0) {
-			std::cout << "Server disconnected.\n";
-			break;
-		}
-		else {
-			std::cerr << "recv failed.\n";
-			break;
-		}
-	}
-}
+void receiveMessages(SOCKET sock);
 
 /**
  * Asks the user for an IP address and a port # for which to connect to the server with.
  *  */
-std::pair<std::string, int> getIP() {
-	std::string ipAndPort{};
-	std::cout << "Enter IP address and Port # > ";
-	std::getline(std::cin, ipAndPort);
-
-	std::regex regex("[0-9.]+:[0-9]+");
-
-	while (!std::regex_match(ipAndPort, regex)) {
-		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n> ", ipAndPort);
-		std::getline(std::cin, ipAndPort);
-	}
-
-	std::string::size_type split = ipAndPort.find_first_of(':');
-
-	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
-}
+std::pair<std::string, int> getIP();
 
 int main() {
 	WSADATA wsaData;
 	SOCKET sock;
 	sockaddr_in serverAddr{};
-	char buffer[1024];
 
 	// Initialize Winsock
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
@@ -92,7 +59,7 @@ int main() {
 	receiver.detach();
 
 	// Send loop
-	std::string input;
+	std::string input{};
 	while (true) {
 		std::getline(std::cin, input);
 		if (input == "exit") break;
@@ -104,4 +71,40 @@ int main() {
 	closesocket(sock);
 	WSACleanup();
 	return 0;
+}
+
+void receiveMessages(SOCKET sock) {
+	char buffer[1024];
+	while (true) {
+		ZeroMemory(buffer, sizeof(buffer));
+		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
+		if (bytesReceived > 0) {
+			std::cout << std::string(buffer, bytesReceived);
+		}
+		else if (bytesReceived == 0) {
+			std::cout << "Server disconnected.\n";
+			break;
+		}
+		else {
+			std::cerr << "recv failed.\n";
+			break;
+		}
+	}
+}
+
+std::pair<std::string, int> getIP() {
+	std::string ipAndPort{};
+	std::cout << "Enter IP address and Port # > ";
+	std::getline(std::cin, ipAndPort);
+
+	std::regex regex("[0-9.]+:[0-9]+");
+
+	while (!std::regex_match(ipAndPort, regex)) {
+		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n> ", ipAndPort);
+		std::getline(std::cin, ipAndPort);
+	}
+
+	std::string::size_type split = ipAndPort.find_first_of(':');
+
+	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
 }
