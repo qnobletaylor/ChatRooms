@@ -11,18 +11,28 @@ import User;
 
 std::vector<User> CLIENTS{}; // Global variable for connected users
 
+/**
+ * Gets the current time and formats it into a string of "hour:min:sec"
+ *
+ * I will likely move this function to client side. Also need to make it a bit more succint.
+ *  */
 std::string getTime() {
 	time_t currentTime;
 	struct tm localTime;
 
 	currentTime = std::time(nullptr);
 	localtime_s(&localTime, &currentTime);
-	std::string min = ((localTime.tm_min / 10) == 0) ? ("0" + localTime.tm_min) : std::to_string(localTime.tm_min);
-	std::string timeStamp = std::format("{}:{}:{}", localTime.tm_hour % 12, min, localTime.tm_sec);
+	std::string min = ((localTime.tm_min / 10) == 0) ? ("0" + std::to_string(localTime.tm_min)) : std::to_string(localTime.tm_min);
+	std::string hour = ((localTime.tm_hour % 12) / 10) == 0 ? ("0" + std::to_string(localTime.tm_hour % 12)) : std::to_string(localTime.tm_hour % 12);
+	std::string sec = ((localTime.tm_sec / 10) == 0) ? ("0" + std::to_string(localTime.tm_sec)) : std::to_string(localTime.tm_sec);
+	std::string timeStamp = std::format("{}:{}:{}", hour, min, sec);
 
 	return timeStamp;
 }
 
+/**
+ * Asks a client for user information and saves their username alongside that client's socket
+ *  */
 User getUser(SOCKET clientSocket) {
 	char buffer[1024];
 	int bytesReceived{};
@@ -45,7 +55,7 @@ void handleClient(SOCKET clientSocket) {
 	ZeroMemory(buffer, sizeof(buffer));
 
 	User user = getUser(clientSocket);
-	std::cout << std::format("{} Connected to server.", user.userName);
+	std::cout << std::format("{} Connected to server.\n", user.userName);
 
 	CLIENTS.push_back(user);
 
@@ -59,8 +69,8 @@ void handleClient(SOCKET clientSocket) {
 			std::cout << output;
 
 			// Echo back
-			for (const auto& client : CLIENTS) {
-				send(client.clientSocket, output.c_str(), output.size(), 0);
+			for (const auto& client : CLIENTS) { // Does not send the message back to the user that sent it
+				if (clientSocket != client.clientSocket) send(client.clientSocket, output.c_str(), output.size(), 0);
 			}
 
 		}
