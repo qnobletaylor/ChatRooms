@@ -94,7 +94,6 @@ int main() {
 	// Send loop
 	std::string input;
 	while (true) {
-		std::cout << "> ";
 		std::getline(std::cin, input);
 		if (input == "exit") break;
 

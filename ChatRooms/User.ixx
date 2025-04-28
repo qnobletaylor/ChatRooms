@@ -6,10 +6,10 @@ import <WinSock2.h>;
 export class User {
 public:
 	std::string userName;
-	SOCKET userSocket;
+	SOCKET clientSocket;
 
-	User(std::string userName, SOCKET userSocket) {
+	User(std::string userName, SOCKET clientSocket) {
 		this->userName = userName;
-		this->userSocket = userSocket;
+		this->clientSocket = clientSocket;
 	}
 };

@@ -1,19 +1,33 @@
 #include <iostream>
+#include <string>
 #include <winsock2.h>
 #include <thread>
 #include <vector>
 #include <format>
 #include <ws2tcpip.h>
+#include <ctime>
 #pragma comment(lib, "ws2_32.lib")
 import User;
 
-std::vector<User> CLIENTS{};
+std::vector<User> CLIENTS{}; // Global variable for connected users
+
+std::string getTime() {
+	time_t currentTime;
+	struct tm localTime;
+
+	currentTime = std::time(nullptr);
+	localtime_s(&localTime, &currentTime);
+	std::string min = ((localTime.tm_min / 10) == 0) ? ("0" + localTime.tm_min) : std::to_string(localTime.tm_min);
+	std::string timeStamp = std::format("{}:{}:{}", localTime.tm_hour % 12, min, localTime.tm_sec);
+
+	return timeStamp;
+}
 
 User getUser(SOCKET clientSocket) {
 	char buffer[1024];
 	int bytesReceived{};
 	ZeroMemory(buffer, sizeof(buffer));
-	std::string prompt = "Server: Enter a UserName\n";
+	std::string prompt = "Server: Enter a Username > ";
 
 	do {
 		send(clientSocket, prompt.c_str(), prompt.size(), 0);
@@ -31,20 +45,22 @@ void handleClient(SOCKET clientSocket) {
 	ZeroMemory(buffer, sizeof(buffer));
 
 	User user = getUser(clientSocket);
+	std::cout << std::format("{} Connected to server.", user.userName);
 
 	CLIENTS.push_back(user);
 
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+		std::string timeStamp = getTime();
 		if (bytesReceived > 0) {
 			std::string msg(buffer, bytesReceived);
-			std::string output = std::format("{}: {}\n", user.userName, msg);
+			std::string output = std::format("<{}> {}: {}\n", timeStamp, user.userName, msg);
 			std::cout << output;
 
 			// Echo back
 			for (const auto& client : CLIENTS) {
-				send(client.userSocket, output.c_str(), output.size(), 0);
+				send(client.clientSocket, output.c_str(), output.size(), 0);
 			}
 
 		}
@@ -100,7 +116,6 @@ int main() {
 	listen(serverSocket, SOMAXCONN);
 	std::cout << "Server listening on port 54000...\n";
 
-	//std::vector<SOCKET> clients{};
 
 	while (true) {
 		clientSocket = accept(serverSocket, nullptr, nullptr);
