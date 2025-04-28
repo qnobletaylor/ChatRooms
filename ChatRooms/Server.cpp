@@ -1,8 +1,11 @@
 #include <iostream>
 #include <winsock2.h>
 #include <thread>
+#include <vector>;
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
+
+std::vector<SOCKET> CLIENTS{};
 
 void handleClient(SOCKET clientSocket) {
 	char buffer[1024];
@@ -14,7 +17,10 @@ void handleClient(SOCKET clientSocket) {
 			std::cout << "Client says: " << msg << "\n";
 
 			// Echo back
-			send(clientSocket, buffer, bytesReceived, 0);
+			for (const auto& client : CLIENTS) {
+				send(client, buffer, bytesReceived, 0);
+			}
+
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Client disconnected gracefully.\n";
@@ -53,7 +59,7 @@ int main() {
 
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY; // Listen on any interface
-	serverAddr.sin_port = htons(54000);      // Port number serverAddr.sin_port = htons(54000);
+	serverAddr.sin_port = htons(54000);      // Port number
 	inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
 	// Bind
@@ -68,8 +74,11 @@ int main() {
 	listen(serverSocket, SOMAXCONN);
 	std::cout << "Server listening on port 54000...\n";
 
+	//std::vector<SOCKET> clients{};
+
 	while (true) {
 		SOCKET clientSocket = accept(serverSocket, nullptr, nullptr);
+		CLIENTS.push_back(clientSocket);
 		if (clientSocket != INVALID_SOCKET) {
 			std::cout << "Client connected.\n";
 			std::thread clientThread(handleClient, clientSocket);

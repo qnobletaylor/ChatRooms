@@ -1,7 +1,9 @@
 #include <iostream>
 #include <string>
+#include <regex>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <format>
 #include <thread>
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -25,6 +27,26 @@ void receiveMessages(SOCKET sock) {
 	}
 }
 
+/**
+ * Asks the user for an IP address and a port # for which to connect to the server with.
+ *  */
+std::pair<std::string, int> getIP() {
+	std::string ipAndPort{};
+	std::cout << "Enter IP address and Port # > ";
+	std::getline(std::cin, ipAndPort);
+
+	std::regex regex("[0-9.]+:[0-9]+");
+
+	while (!std::regex_match(ipAndPort, regex)) {
+		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n> ", ipAndPort);
+		std::getline(std::cin, ipAndPort);
+	}
+
+	std::string::size_type split = ipAndPort.find_first_of(':');
+
+	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
+}
+
 int main() {
 	WSADATA wsaData;
 	SOCKET sock;
@@ -46,15 +68,22 @@ int main() {
 	}
 
 	serverAddr.sin_family = AF_INET;
-	inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
-	serverAddr.sin_port = htons(54000);
+
+
+
+	std::pair<std::string, int> ipAndPort = getIP();
+
+	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr);
+	serverAddr.sin_port = htons(ipAndPort.second);
 
 	// Connect to server
-	if (connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+	while (connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
 		std::cerr << "Connection failed.\n";
-		closesocket(sock);
-		WSACleanup();
-		return 1;
+
+		std::pair<std::string, int> ipAndPort = getIP();
+
+		inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr);
+		serverAddr.sin_port = htons(ipAndPort.second);
 	}
 
 	std::cout << "Connected to server. Type messages, or 'exit' to quit.\n";
