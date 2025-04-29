@@ -5,7 +5,7 @@
 #include <ws2tcpip.h>
 #include <format>
 #include <thread>
-#pragma comment(lib, "Ws2_32.lib");
+#pragma comment(lib, "Ws2_32.lib")
 
 // Function to receive messages in a separate thread
 void receiveMessages(SOCKET sock);

@@ -6,26 +6,57 @@
 #include <format>
 #include <ws2tcpip.h>
 #include <ctime>
+#include "Room.hpp"
 #pragma comment(lib, "ws2_32.lib")
+import <map>;
+import <mutex>;
 import User;
 
+
+/**
+ * TODO > History <
+ *		- Create a form of history for all sent messages, so that when new users connect then on joining the user can get
+ *		a brief history of chat.
+ *		- Cap the size of the number of messages stored, so the oldest messages will be tossed out
+ *		- This could be stored in the form of a hashmap<User, List<String>> So you could also query the server to give all messages sent by a specific user.
+ *		- Or simply basic string array[], and have a function which keeps track of size, probably better to use a list so that removing and replacing
+ *		nodes will be O(1)
+ *
+ *		> Rooms <
+ *		- Create a room class which can simply hold a list of users (vector of users)
+ *		- Instead of the CLIENTS vector which holds users, make a hashmap<string, Room> so that key will be room name and room will contain the list of users
+ *		in that room currently.
+ *		- add method for moving clients between rooms, make sure its threadsafe using std::mutex
+ */
+
 std::vector<User> CLIENTS{}; // Global variable for connected users
+std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} };
 
 /**
  * Gets the current time and formats it into a string of "hour:min:sec"
  *
- * I will likely move this function to client side. Also need to make it a bit more succint.
- *  */
+ * I will likely move this function to client side. Also need to make it a bit more succint..
+ */
 std::string getTime();
 
 /**
- * Asks a client for user information and saves their username alongside that client's socket
- *  */
+ * Asks a client for user information and saves their username alongside that client's socket.
+ */
 User getUser(SOCKET clientSocket);
 
+/**
+ * Accepts new client connections and starts a new thread using handleClient with the clientSocket which connected.
+ */
 void acceptClients(SOCKET serverSocket);
 
+/**
+ * Handles receiving data from a client which connects to the server.
+ *  */
 void handleClient(SOCKET clientSocket);
+
+//void addClient(SOCKET& clientSocket);
+//void broadcastToRoom(const std::string& roomName);
+//void broadcastToServer();
 
 
 int main() {
@@ -73,9 +104,12 @@ int main() {
 
 		input = std::format("<{}>[SERVER]: {}\n", getTime(), input);
 
-		if (!CLIENTS.empty()) {
-			for (const auto& client : CLIENTS) {
-				send(client.clientSocket, input.c_str(), input.size(), 0);
+		for (auto& room : roomList) {
+			if (room.second.getUsers().empty());
+			else {
+				for (const auto& user : room.second.getUsers()) {
+					send(user.clientSocket, input.c_str(), input.size(), 0);
+				}
 			}
 		}
 	}
@@ -139,7 +173,7 @@ void handleClient(SOCKET clientSocket) {
 	User user = getUser(clientSocket);
 	std::cout << std::format("{} Connected to server.\n", user.username);
 
-	CLIENTS.push_back(user);
+	roomList.at("Lobby").addUser(user);
 
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
@@ -152,7 +186,7 @@ void handleClient(SOCKET clientSocket) {
 			std::cout << output;
 
 			// Echo back
-			for (const auto& client : CLIENTS) { // Does not send the message back to the user that sent it
+			for (const auto& client : roomList.at(user.currentRoom).getUsers()) { // Does not send the message back to the user that sent it
 				if (clientSocket != client.clientSocket) send(client.clientSocket, output.c_str(), output.size(), 0);
 			}
 
