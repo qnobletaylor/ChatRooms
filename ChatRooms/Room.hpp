@@ -1,6 +1,5 @@
 #ifndef ROOM_H
 #define ROOM_H
-#pragma once
 
 import <string>;
 import <set>;

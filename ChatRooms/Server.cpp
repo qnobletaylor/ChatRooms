@@ -9,6 +9,7 @@
 #include "Room.hpp"
 #pragma comment(lib, "ws2_32.lib")
 import <map>;
+import <set>;
 import <mutex>;
 import User;
 
@@ -29,7 +30,7 @@ import User;
  *		- add method for moving clients between rooms, make sure its threadsafe using std::mutex
  */
 
-std::vector<User> CLIENTS{}; // Global variable for connected users
+std::set<std::string> usernameList{}; // Global variable for connected users
 std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} };
 
 /**
@@ -42,7 +43,7 @@ std::string getTime();
 /**
  * Asks a client for user information and saves their username alongside that client's socket.
  */
-User getUser(SOCKET clientSocket);
+User createUser(SOCKET clientSocket);
 
 /**
  * Accepts new client connections and starts a new thread using handleClient with the clientSocket which connected.
@@ -135,7 +136,7 @@ std::string getTime() {
 	return timeStamp;
 }
 
-User getUser(SOCKET clientSocket) {
+User createUser(SOCKET clientSocket) {
 	char buffer[1024];
 	int bytesReceived{};
 	ZeroMemory(buffer, sizeof(buffer));
@@ -148,6 +149,18 @@ User getUser(SOCKET clientSocket) {
 	} while (bytesReceived <= 0);
 
 	std::string msg(buffer, bytesReceived);
+
+	std::string takenUserPrompt = (msg + " is already taken, please choose another name > ");
+
+	while (!usernameList.insert(msg).second) {
+		send(clientSocket, takenUserPrompt.c_str(), takenUserPrompt.size(), 0);
+
+		bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+
+		if (bytesReceived <= 0) continue;
+		else msg = std::string(buffer, bytesReceived);
+	}
+
 
 	return User(msg, clientSocket);
 }
@@ -170,7 +183,7 @@ void handleClient(SOCKET clientSocket) {
 	char buffer[1024];
 	ZeroMemory(buffer, sizeof(buffer));
 
-	User user = getUser(clientSocket);
+	User user = createUser(clientSocket);
 	std::cout << std::format("{} Connected to server.\n", user.username);
 
 	roomList.at("Lobby").addUser(user);
