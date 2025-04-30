@@ -26,7 +26,7 @@ bool Room::hasUser(const User& user) const {
 }
 
 bool Room::moveUser(User& user, Room& current, Room& dest) {
-	//std::lock_guard<std::mutex> guard(mutex);
+	// I'm thinking that there doesn't need to be a lock in this method due to other methods being called already containing locks
 	if (current.hasUser(user)) {
 		current.removeUser(user);
 		user.currentRoom = dest.getName();

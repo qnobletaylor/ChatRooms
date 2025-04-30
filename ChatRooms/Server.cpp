@@ -24,18 +24,29 @@
  *		- Or simply basic string array[], and have a function which keeps track of size, probably better to use a list so that removing and replacing
  *		nodes will be O(1)
  *
- *		> Rooms <
- *		- Create a room class which can simply hold a list of users (vector of users)
- *		- Instead of the CLIENTS vector which holds users, make a hashmap<string, Room> so that key will be room name and room will contain the list of users
- *		in that room currently.
- *		- add method for moving clients between rooms, make sure its threadsafe using std::mutex
+ *		> Logging <
+ *		- Add server side console output for when users use commands and what that user is doing when executing cmds
+ *
+ *		> User commands <
+ *		- Add command to list all users in a room, list users in server, possibly send direct msg to another user.
+ *
+ *		> server commands <
+ *		- Add server only commands, such as kick user, move user, move all users. Just some ideas.
  */
 std::mutex usernameListMutex;
 std::set<std::string> usernameList{}; // Global variable for connected users
 std::mutex roomListMutex;
 std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} }; // Initial room which all users start in will be known as the lobby
-//std::string help{ "CREATE_ROOM name\n\tcreates a room with a given name "
-//};
+std::string help{
+	"\t\t** List of Commands **\n\n"
+	"CREATE_ROOM <name>\n\tCreate a new room and move to it.\n"
+	"JOIN_ROOM <name>\n\tMove to another existing room.\n"
+	"LIST_ROOMS\n\tDisplay a list of all rooms on the server and how many users are in each room.\n"
+	"EXIT\n\tExit the server.\n"
+	"HELP\n\tDisplay this list of commands.\n\n"
+	"Instructions\n\tTo use a command simply type a '/' followed by the command and any necessary arguments\n"
+	"\tFor example to create a new room use /CREATE_ROOM Study\n"
+};
 
 /**
  * Gets the current time and formats it into a string of "hour:min:sec"
