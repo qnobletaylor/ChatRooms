@@ -4,25 +4,31 @@
 #include <string>;
 #include <set>;
 #include <vector>;
-import User;
+#include "User.h";
 
 class Room {
 public:
+	Room();
+
 	Room(const std::string& name) {
 		this->name = name;
 	}
 
-	Room(const std::string& name, const User& firstUser);
+	Room(const std::string& name, User& firstUser);
 
 	bool removeUser(const User& user);
 
 	bool addUser(const User& user);
 
-	bool hasUser(const User& user);
+	bool hasUser(const User& user) const;
 
-	std::set<User> getUsers() { return userList; }
+	std::set<User> getUsers() const { return userList; }
 
-	static bool moveUser(const User& user, Room& current, Room& dest);
+	static bool moveUser(User& user, Room& current, Room& dest);
+
+	std::string getName() const { return name; }
+
+	int getSize() const { return userList.size(); }
 
 private:
 	std::string name;

@@ -8,11 +8,11 @@
 #include <format>
 #include <ws2tcpip.h>
 #include <ctime>
+#include <mutex>
 #include "Room.h"
+#include "User.h"
 #pragma comment(lib, "ws2_32.lib")
 
-import <mutex>;
-import User;
 
 
 /**
@@ -30,9 +30,12 @@ import User;
  *		in that room currently.
  *		- add method for moving clients between rooms, make sure its threadsafe using std::mutex
  */
-
+std::mutex usernameListMutex;
 std::set<std::string> usernameList{}; // Global variable for connected users
-std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} };
+std::mutex roomListMutex;
+std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} }; // Initial room which all users start in will be known as the lobby
+//std::string help{ "CREATE_ROOM name\n\tcreates a room with a given name "
+//};
 
 /**
  * Gets the current time and formats it into a string of "hour:min:sec"
@@ -53,14 +56,20 @@ void acceptClients(SOCKET serverSocket);
 
 /**
  * Handles receiving data from a client which connects to the server.
- *  */
+ */
 void handleClient(SOCKET clientSocket);
 
-//void addClient(SOCKET& clientSocket);
-
+/**
+ * Broadcast a mesage to a room, given a room name and the message.
+ */
 void broadcastToRoom(const std::string& roomName, const std::string& msg);
 
+/**
+ * Broadcasts a message to every room on the server so long as it's not empty.
+ */
 void broadcastToServer(const std::string& msg);
+
+void userCommand(const std::string& cmd, User& user);
 
 
 int main() {
@@ -100,6 +109,7 @@ int main() {
 	std::cout << "Server listening on port 54000...\n";
 
 	std::thread acceptThread(acceptClients, serverSocket);
+	acceptThread.detach();
 
 	std::string input{};
 	while (true) {
@@ -112,7 +122,6 @@ int main() {
 	}
 
 	// Cleanup
-	//closesocket(clientSocket);
 	closesocket(serverSocket);
 	WSACleanup();
 	return 0;
@@ -148,6 +157,8 @@ User createUser(SOCKET clientSocket) {
 
 	std::string takenUserPrompt = (msg + " is already taken, please choose another name > ");
 
+	std::lock_guard<std::mutex> guard(usernameListMutex);
+
 	while (!usernameList.insert(msg).second) {
 		send(clientSocket, takenUserPrompt.c_str(), takenUserPrompt.size(), 0);
 
@@ -180,6 +191,7 @@ void handleClient(SOCKET clientSocket) {
 	ZeroMemory(buffer, sizeof(buffer));
 
 	User user = createUser(clientSocket);
+
 	std::cout << std::format("{} Connected to server.\n", user.username);
 
 	roomList.at("Lobby").addUser(user);
@@ -191,11 +203,14 @@ void handleClient(SOCKET clientSocket) {
 		if (bytesReceived > 0) {
 			Message msg{ std::string(buffer, bytesReceived), getTime() };
 
-			std::string output = std::format("<{}>[{}]: {}\n", msg.timeStamp, user.username, msg.message);
-			std::cout << output;
+			if (msg.message.at(0) == '/') userCommand(msg.message, user);
+			else {
+				std::string output = std::format("<{}>[{}]: {}\n", msg.timeStamp, user.username, msg.message);
+				std::cout << output;
 
-			// Echo back
-			broadcastToRoom(user.currentRoom, output);
+				// Echo back
+				broadcastToRoom(user.currentRoom, output);
+			}
 
 		}
 		else if (bytesReceived == 0) {
@@ -226,5 +241,59 @@ void broadcastToServer(const std::string& msg) {
 				send(user.clientSocket, msg.c_str(), msg.size(), 0);
 			}
 		}
+	}
+}
+
+void userCommand(const std::string& msg, User& user) {
+	size_t firstSpace = msg.find(' ');
+	std::string cmd = msg.substr(1, firstSpace - 1);
+	std::string param = msg.substr(firstSpace + 1, msg.find(' ', firstSpace + 1));
+
+	if (cmd == "HELP") {
+		send(user.clientSocket, help.c_str(), help.size(), 0);
+	}
+	else if (cmd == "CREATE_ROOM") {
+
+		if (!roomList.contains(param)) {
+			std::string info = std::format("Created and moved to {}\n", param);
+			roomList[param] = Room(param, user);
+			Room::moveUser(user, roomList[user.currentRoom], roomList[param]);
+			send(user.clientSocket, info.c_str(), info.size(), 0);
+		}
+		else {
+			std::string errorMsg{ "The room " + param + " already exists, try another name.\n" };
+			send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0);
+		}
+	}
+	else if (cmd == "JOIN_ROOM") {
+
+		if (roomList.contains(param)) {
+			std::string info = std::format("Moved to {}, currently {} other users in this room\n", param, roomList[param].getSize());
+			Room::moveUser(user, roomList[user.currentRoom], roomList[param]);
+			send(user.clientSocket, info.c_str(), info.size(), 0);
+		}
+		else {
+			std::string errorMsg{ "The room " + param + " does not exist.\n" };
+			send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0);
+		}
+	}
+	else if (cmd == "LIST_ROOMS") {
+
+		std::string rooms{ "Listing Rooms:\n" };
+		for (const auto& room : roomList) {
+			if (user.currentRoom == room.first) rooms += std::format("> {} [{} users]\n", room.first, room.second.getSize());
+			else rooms += std::format("  {} [{} users]\n", room.first, room.second.getSize());
+		}
+
+		send(user.clientSocket, rooms.c_str(), rooms.size(), 0);
+	}
+	else if (cmd == "EXIT") {
+		std::string exitMsg = "Leaving server...";
+		send(user.clientSocket, exitMsg.c_str(), exitMsg.size(), 0);
+		closesocket(user.clientSocket);
+	}
+	else {
+		std::string errorMsg = (cmd + " is an unknown command, try /HELP for a list of commands.");
+		send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0);
 	}
 }

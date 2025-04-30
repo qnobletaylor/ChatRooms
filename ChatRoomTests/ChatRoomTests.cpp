@@ -1,11 +1,17 @@
 #include "gtest/gtest.h"
-import User;
+#include <string>
+#include "../ChatRooms/Room.h"
+#include "../ChatRooms/User.h"
 
-TEST(ChatRoomTests, Constructor) {
-	Message msg("Ted", "12:34:56");
+TEST(StringSplitting, CMD) {
+	std::string msg = "/Hello World";
+	size_t firstSpace = msg.find(' ');
+	std::string cmd = msg.substr(1, firstSpace - 1);
+	std::string param = msg.substr(firstSpace + 1, msg.find(' ', firstSpace + 1));
 
-	EXPECT_EQ(msg.message, "Ted");
-	EXPECT_EQ(msg.timeStamp, "12");
+	ASSERT_EQ(cmd, "Hello");
+	ASSERT_EQ(param, "World");
+
 }
 
 
