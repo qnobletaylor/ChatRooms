@@ -3,13 +3,14 @@
 #include <winsock2.h>
 #include <thread>
 #include <vector>
+#include <set>
+#include <map>
 #include <format>
 #include <ws2tcpip.h>
 #include <ctime>
-#include "Room.hpp"
+#include "Room.h"
 #pragma comment(lib, "ws2_32.lib")
-import <map>;
-import <set>;
+
 import <mutex>;
 import User;
 
@@ -56,8 +57,10 @@ void acceptClients(SOCKET serverSocket);
 void handleClient(SOCKET clientSocket);
 
 //void addClient(SOCKET& clientSocket);
-//void broadcastToRoom(const std::string& roomName);
-//void broadcastToServer();
+
+void broadcastToRoom(const std::string& roomName, const std::string& msg);
+
+void broadcastToServer(const std::string& msg);
 
 
 int main() {
@@ -105,14 +108,7 @@ int main() {
 
 		input = std::format("<{}>[SERVER]: {}\n", getTime(), input);
 
-		for (auto& room : roomList) {
-			if (room.second.getUsers().empty());
-			else {
-				for (const auto& user : room.second.getUsers()) {
-					send(user.clientSocket, input.c_str(), input.size(), 0);
-				}
-			}
-		}
+		broadcastToServer(input);
 	}
 
 	// Cleanup
@@ -199,9 +195,7 @@ void handleClient(SOCKET clientSocket) {
 			std::cout << output;
 
 			// Echo back
-			for (const auto& client : roomList.at(user.currentRoom).getUsers()) { // Does not send the message back to the user that sent it
-				if (clientSocket != client.clientSocket) send(client.clientSocket, output.c_str(), output.size(), 0);
-			}
+			broadcastToRoom(user.currentRoom, output);
 
 		}
 		else if (bytesReceived == 0) {
@@ -215,4 +209,22 @@ void handleClient(SOCKET clientSocket) {
 	}
 
 	closesocket(clientSocket);
+}
+
+
+void broadcastToRoom(const std::string& roomName, const std::string& msg) {
+	for (const auto& client : roomList.at(roomName).getUsers()) { // Does not send the message back to the user that sent it
+		send(client.clientSocket, msg.c_str(), msg.size(), 0);
+	}
+}
+
+void broadcastToServer(const std::string& msg) {
+	for (auto& room : roomList) {
+		if (room.second.getUsers().empty());
+		else {
+			for (const auto& user : room.second.getUsers()) {
+				send(user.clientSocket, msg.c_str(), msg.size(), 0);
+			}
+		}
+	}
 }
