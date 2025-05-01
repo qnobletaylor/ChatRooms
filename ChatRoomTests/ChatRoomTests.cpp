@@ -1,7 +1,30 @@
 #include "gtest/gtest.h"
 #include <string>
+#include <regex>
 #include "../ChatRooms/Room.h"
 #include "../ChatRooms/User.h"
+
+TEST(Regex, ipAndPort) {
+	std::regex regex{ R"~(^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3}|0)$)~" };
+
+	std::string a{ "127.0.0.1:54000" }, b{ "125.12.3.5:65535" }, c{ "1a.23.1.0:1" }, d{ "1.2.3.-:12" };
+
+	EXPECT_TRUE(std::regex_match(a, regex));
+	EXPECT_TRUE(std::regex_match(b, regex));
+	EXPECT_FALSE(std::regex_match(c, regex));
+	EXPECT_FALSE(std::regex_match(d, regex));
+}
+
+TEST(Regex, port) {
+	std::regex regex{ R"~(^(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$)~" };
+
+	std::string a{ "65535" }, b{ "2234" }, c{ "1abc" }, d{ "65536" };
+
+	EXPECT_TRUE(std::regex_match(a, regex));
+	EXPECT_TRUE(std::regex_match(b, regex)); //This should be passing...
+	EXPECT_FALSE(std::regex_match(c, regex));
+	EXPECT_FALSE(std::regex_match(d, regex));
+}
 
 TEST(StringSplitting, cmdAndParam) {
 	std::string msg = "/CREATE_ROOM Test";
@@ -97,7 +120,7 @@ TEST(RoomTest, getSize) {
 	User testUser{};
 	Room testRoom1("Room1", testUser);
 
-	EXPECT_TRUE(testRoom1.getSize(), 1);
+	EXPECT_EQ(testRoom1.getSize(), 1);
 }
 
 TEST(RoomTest, changeName) {

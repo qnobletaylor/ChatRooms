@@ -100,7 +100,8 @@ std::pair<std::string, int> getIP() {
 	std::cout << "Enter IP address and Port # > ";
 	std::getline(std::cin, ipAndPort);
 
-	std::regex regex("[0-9.]+:[0-9]+");
+	// This is ai generated
+	std::regex regex{ R"~(^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3}|0)$)~" };
 
 	while (!std::regex_match(ipAndPort, regex)) {
 		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n> ", ipAndPort);

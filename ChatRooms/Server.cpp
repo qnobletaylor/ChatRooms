@@ -8,6 +8,7 @@
 #include <format>
 #include <ws2tcpip.h>
 #include <ctime>
+#include <regex>
 #include <mutex>
 #include "Room.h"
 #include "User.h"
@@ -17,8 +18,6 @@
 
 /**
  * TODO
- *		> Port input <
- *		- On startup
  *
  *		> History <
  *		- Create a form of history for all sent messages, so that when new users connect then on joining the user can get
@@ -114,7 +113,9 @@ int main() {
 
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY; // Listen on any interface
-	serverAddr.sin_port = htons(54000);      // Port number
+
+	u_short portNum = getPort(); // Prompt for port number
+	serverAddr.sin_port = htons(portNum);
 	inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
 	// Bind
@@ -127,7 +128,7 @@ int main() {
 
 	// Listen
 	listen(serverSocket, SOMAXCONN);
-	std::cout << "Server listening on port 54000...\n";
+	std::cout << "Server listening on port " << portNum << " ...\n";
 
 	std::thread acceptThread(acceptClients, serverSocket);
 	acceptThread.detach();
@@ -149,9 +150,19 @@ int main() {
 }
 
 int getPort() {
+	std::string port{};
+	std::cout << "Enter a port # > ";
+	std::getline(std::cin, port);
 
+	// This is ai generated
+	std::regex regex{ R"~(^(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$)~" };
 
-	return 0;
+	while (!std::regex_match(port, regex)) {
+		std::cout << std::format("You entered: {}, please try again with a valid port 0-65535\n> ", port);
+		std::getline(std::cin, port);
+	}
+
+	return std::stoi(port);
 }
 
 std::string getTime() {
@@ -255,7 +266,8 @@ void handleClient(SOCKET clientSocket) {
 
 
 void broadcastToRoom(const std::string& roomName, const std::string& msg) {
-	std::cout << msg;
+	std::cout << roomName << " | " << msg; // Print in server console
+
 	for (const auto& client : roomList.at(roomName).getUsers()) { // Does not send the message back to the user that sent it
 		send(client.clientSocket, msg.c_str(), msg.size(), 0);
 	}
@@ -307,7 +319,7 @@ void userCommand(const std::string& msg, User& user) {
 			std::string infoServer = std::format("{} moved to {}\n", user.username, param);
 
 
-			broadcastToRoom(user.currentRoom, infoServer);
+			broadcastToRoom(user.currentRoom, infoServer); // Don't send to user that moved...
 			Room::moveUser(user, roomList[user.currentRoom], roomList[param]);
 
 			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
