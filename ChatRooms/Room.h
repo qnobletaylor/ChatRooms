@@ -18,7 +18,7 @@ public:
 
 	bool removeUser(const User& user);
 
-	bool addUser(const User& user);
+	bool addUser(User& user);
 
 	bool hasUser(const User& user) const;
 
@@ -26,7 +26,11 @@ public:
 
 	static bool moveUser(User& user, Room& current, Room& dest);
 
+	bool changeName(const User& user, const std::string& newName);
+
 	std::string getName() const { return name; }
+
+	User getCreator() const { return creator; }
 
 	int getSize() const { return userList.size(); }
 
