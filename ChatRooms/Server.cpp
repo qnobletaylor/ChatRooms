@@ -16,7 +16,11 @@
 
 
 /**
- * TODO > History <
+ * TODO
+ *		> Port input <
+ *		- On startup
+ *
+ *		> History <
  *		- Create a form of history for all sent messages, so that when new users connect then on joining the user can get
  *		a brief history of chat.
  *		- Cap the size of the number of messages stored, so the oldest messages will be tossed out
@@ -32,7 +36,11 @@
  *
  *		> server commands <
  *		- Add server only commands, such as kick user, move user, move all users. Just some ideas.
+ *
+ *		> Audio ** <
+ *		-
  */
+
 std::mutex usernameListMutex;
 std::set<std::string> usernameList{}; // Global variable for connected users
 std::mutex roomListMutex;
@@ -47,6 +55,8 @@ std::string help{
 	"Instructions\n\tTo use a command simply type a '/' followed by the command and any necessary arguments\n"
 	"\tFor example to create a new room use /CREATE_ROOM Study\n"
 };
+
+int getPort();
 
 /**
  * Gets the current time and formats it into a string of "hour:min:sec"
@@ -138,14 +148,21 @@ int main() {
 	return 0;
 }
 
+int getPort() {
+
+
+	return 0;
+}
+
 std::string getTime() {
 	time_t currentTime;
 	struct tm localTime;
 
 	currentTime = std::time(nullptr);
 	localtime_s(&localTime, &currentTime);
+
 	std::string min = ((localTime.tm_min / 10) == 0) ? ("0" + std::to_string(localTime.tm_min)) : std::to_string(localTime.tm_min);
-	std::string hour = ((localTime.tm_hour % 12) / 10) == 0 ? ("0" + std::to_string(localTime.tm_hour % 12)) : std::to_string(localTime.tm_hour % 12);
+	std::string hour = ((localTime.tm_hour % 12) / 10) == 0 ? ("0" + std::to_string(localTime.tm_hour % 12)) : std::to_string((localTime.tm_hour % 12));
 	std::string sec = ((localTime.tm_sec / 10) == 0) ? ("0" + std::to_string(localTime.tm_sec)) : std::to_string(localTime.tm_sec);
 	std::string timeStamp = std::format("{}:{}:{}", hour, min, sec);
 
@@ -217,7 +234,6 @@ void handleClient(SOCKET clientSocket) {
 			if (msg.message.at(0) == '/') userCommand(msg.message, user);
 			else {
 				std::string output = std::format("<{}>[{}]: {}\n", msg.timeStamp, user.username, msg.message);
-				std::cout << output;
 
 				// Echo back
 				broadcastToRoom(user.currentRoom, output);
@@ -239,6 +255,7 @@ void handleClient(SOCKET clientSocket) {
 
 
 void broadcastToRoom(const std::string& roomName, const std::string& msg) {
+	std::cout << msg;
 	for (const auto& client : roomList.at(roomName).getUsers()) { // Does not send the message back to the user that sent it
 		send(client.clientSocket, msg.c_str(), msg.size(), 0);
 	}
@@ -258,18 +275,25 @@ void broadcastToServer(const std::string& msg) {
 void userCommand(const std::string& msg, User& user) {
 	size_t firstSpace = msg.find(' ');
 	std::string cmd = msg.substr(1, firstSpace - 1);
-	std::string param = msg.substr(firstSpace + 1, msg.find(' ', firstSpace + 1));
+	//Currently only takes the first word after command, expand to including multi words denoted by " "
+	std::string param = msg.substr(firstSpace + 1, msg.find(' ', firstSpace + 1) - firstSpace);
 
+
+	for (auto& c : cmd) c = std::toupper(c);
 	if (cmd == "HELP") {
 		send(user.clientSocket, help.c_str(), help.size(), 0);
 	}
 	else if (cmd == "CREATE_ROOM") {
 
 		if (!roomList.contains(param)) {
-			std::string info = std::format("Created and moved to {}\n", param);
+			std::string infoUser = std::format("Created and moved to {}\n", param);
+			std::string infoServer = std::format("{} created new room {}\n", user.username, param);
+
 			roomList[param] = Room(param, user);
 			Room::moveUser(user, roomList[user.currentRoom], roomList[param]);
-			send(user.clientSocket, info.c_str(), info.size(), 0);
+
+			std::cout << infoServer;
+			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
 		}
 		else {
 			std::string errorMsg{ "The room " + param + " already exists, try another name.\n" };
@@ -279,9 +303,14 @@ void userCommand(const std::string& msg, User& user) {
 	else if (cmd == "JOIN_ROOM") {
 
 		if (roomList.contains(param)) {
-			std::string info = std::format("Moved to {}, currently {} other users in this room\n", param, roomList[param].getSize());
+			std::string infoUser = std::format("Moved to {}, currently {} other users in this room\n", param, roomList[param].getSize());
+			std::string infoServer = std::format("{} moved to {}\n", user.username, param);
+
+
+			broadcastToRoom(user.currentRoom, infoServer);
 			Room::moveUser(user, roomList[user.currentRoom], roomList[param]);
-			send(user.clientSocket, info.c_str(), info.size(), 0);
+
+			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
 		}
 		else {
 			std::string errorMsg{ "The room " + param + " does not exist.\n" };
@@ -299,12 +328,16 @@ void userCommand(const std::string& msg, User& user) {
 		send(user.clientSocket, rooms.c_str(), rooms.size(), 0);
 	}
 	else if (cmd == "EXIT") {
-		std::string exitMsg = "Leaving server...";
-		send(user.clientSocket, exitMsg.c_str(), exitMsg.size(), 0);
+		std::string infoUser{ "Leaving server..." };
+		std::string infoServer{ user.username + " left the server.\n" };
+
+		broadcastToRoom(user.currentRoom, infoServer);
+		send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
+
 		closesocket(user.clientSocket);
 	}
 	else {
-		std::string errorMsg = (cmd + " is an unknown command, try /HELP for a list of commands.");
+		std::string errorMsg = (cmd + " is an unknown command, try /HELP for a list of commands.\n");
 		send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0);
 	}
 }

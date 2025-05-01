@@ -7,7 +7,7 @@
 struct User {
 	std::string username;
 	SOCKET clientSocket;
-	std::string currentRoom = "Lobby";
+	std::string currentRoom;
 
 	bool operator==(const User& other) const { return username == other.username; }
 	bool operator<(const User& other) const { return username < other.username; }
@@ -16,6 +16,7 @@ struct User {
 struct Message {
 	std::string message;
 	std::string timeStamp;
+	std::string username;
 };
 
 #endif

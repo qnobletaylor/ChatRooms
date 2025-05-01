@@ -90,6 +90,9 @@ void receiveMessages(SOCKET sock) {
 			break;
 		}
 	}
+
+	closesocket(sock);
+	WSACleanup();
 }
 
 std::pair<std::string, int> getIP() {
@@ -104,7 +107,7 @@ std::pair<std::string, int> getIP() {
 		std::getline(std::cin, ipAndPort);
 	}
 
-	std::string::size_type split = ipAndPort.find_first_of(':');
+	std::string::size_type split = ipAndPort.find(':');
 
 	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
 }
