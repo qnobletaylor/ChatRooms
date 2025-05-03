@@ -1,5 +1,7 @@
 #include <iostream>
+#include <iomanip>
 #include <string>
+#include <sstream>
 #include <winsock2.h>
 #include <thread>
 #include <vector>
@@ -27,8 +29,6 @@
  *		- Or simply basic string array[], and have a function which keeps track of size, probably better to use a list so that removing and replacing
  *		nodes will be O(1)
  *
- *		> Logging <
- *		- Add server side console output for when users use commands and what that user is doing when executing cmds
  *
  *		> User commands <
  *		- Add command to list all users in a room, list users in server, possibly send direct msg to another user.
@@ -37,9 +37,11 @@
  *		- Add server only commands, such as kick user, move user, move all users. Just some ideas.
  *
  *		> Audio ** <
- *		-
+ *		- Maybe text to speech
  */
 
+
+ // Let's figure out a way to make these not globals if possible.
 std::mutex usernameListMutex;
 std::set<std::string> usernameList{}; // Global variable for connected users
 std::mutex roomListMutex;
@@ -49,13 +51,16 @@ std::string help{
 	"CREATE_ROOM <name>\n\tCreate a new room and move to it.\n"
 	"JOIN_ROOM <name>\n\tMove to another existing room.\n"
 	"LIST_ROOMS\n\tDisplay a list of all rooms on the server and how many users are in each room.\n"
+	"LIST_USERS <room = Lobby>\n\tLists users within a given room or if no argument is given lists all users in server.\n"
 	"EXIT\n\tExit the server.\n"
 	"HELP\n\tDisplay this list of commands.\n\n"
 	"Instructions\n\tTo use a command simply type a '/' followed by the command and any necessary arguments\n"
-	"\tFor example to create a new room use /CREATE_ROOM Study\n"
+	"\tFor example to create a new room use /CREATE_ROOM Study (commands are case insensitive)\n"
 };
 
 int getPort();
+
+bool validatePort(const std::string port);
 
 /**
  * Gets the current time and formats it into a string of "hour:min:sec"
@@ -89,10 +94,23 @@ void broadcastToRoom(const std::string& roomName, const std::string& msg);
  */
 void broadcastToServer(const std::string& msg);
 
+/**
+ * Handles commands sent by a client.
+ */
 void userCommand(const std::string& cmd, User& user);
 
+/**
+ * Returns a string formatted list of users in the server.
+ */
+std::string usersToString();
 
-int main() {
+/**
+ * Returns a string formatted list of users within a given room.
+ */
+std::string usersToString(Room room);
+
+
+int main(int argc, char* argv[]) {
 	WSADATA wsaData;
 	SOCKET serverSocket;
 	sockaddr_in serverAddr{}, clientAddr{};
@@ -114,7 +132,15 @@ int main() {
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY; // Listen on any interface
 
-	u_short portNum = getPort(); // Prompt for port number
+	u_short portNum{};
+	if (argc != 0 && argc >= 1 && validatePort(argv[1])) {
+		portNum = std::stoi(argv[1]);
+	}
+	else {
+		// Prompting for Port
+		portNum = getPort();
+	}
+
 	serverAddr.sin_port = htons(portNum);
 	inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
@@ -154,15 +180,18 @@ int getPort() {
 	std::cout << "Enter a port # > ";
 	std::getline(std::cin, port);
 
-	// This is ai generated
-	std::regex regex{ R"~(^(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$)~" };
-
-	while (!std::regex_match(port, regex)) {
+	while (!validatePort(port)) {
 		std::cout << std::format("You entered: {}, please try again with a valid port 0-65535\n> ", port);
 		std::getline(std::cin, port);
 	}
 
 	return std::stoi(port);
+}
+
+bool validatePort(const std::string port) {
+	std::regex regex{ R"~(^(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$)~" };
+
+	return std::regex_match(port, regex);
 }
 
 std::string getTime() {
@@ -339,6 +368,19 @@ void userCommand(const std::string& msg, User& user) {
 
 		send(user.clientSocket, rooms.c_str(), rooms.size(), 0);
 	}
+	else if (cmd == "LIST_USERS") {
+
+		std::string usersString{};
+		if (param == cmd) {
+			usersString = usersToString();
+		}
+		else {
+			usersString = roomList.contains(param) ? usersToString(roomList[param]) : (param + " does not exist.");
+		}
+
+		send(user.clientSocket, usersString.c_str(), usersString.size(), 0);
+
+	}
 	else if (cmd == "EXIT") {
 		std::string infoUser{ "Leaving server..." };
 		std::string infoServer{ user.username + " left the server.\n" };
@@ -352,4 +394,28 @@ void userCommand(const std::string& msg, User& user) {
 		std::string errorMsg = (cmd + " is an unknown command, try /HELP for a list of commands.\n");
 		send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0);
 	}
+}
+
+std::string usersToString() {
+	std::stringstream ss{};
+	int i = 1;
+	ss << "[" << usernameList.size() << " Users]\n";
+	for (const auto& user : usernameList) {
+		ss << std::setw(10) << user << " | ";
+		if (i++ % 5 == 0) ss << "\n";
+	}
+
+	return ss.str();
+}
+
+std::string usersToString(Room room) {
+	std::stringstream ss{};
+	int i = 1;
+	ss << "[" << usernameList.size() << " Users]\n";
+	for (const auto& user : room.getUsers()) {
+		ss << std::setw(10) << user.username << " | ";
+		if (i++ % 5 == 0) ss << "\n";
+	}
+
+	return ss.str();
 }

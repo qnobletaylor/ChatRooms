@@ -15,7 +15,9 @@ void receiveMessages(SOCKET sock);
  *  */
 std::pair<std::string, int> getIP();
 
-int main() {
+bool validateIPandPort(std::string input);
+
+int main(int argc, char* argv[]) {
 	WSADATA wsaData;
 	SOCKET sock;
 	sockaddr_in serverAddr{};
@@ -36,14 +38,21 @@ int main() {
 
 	serverAddr.sin_family = AF_INET;
 
+	std::pair<std::string, int> ipAndPort;
 
+	if (argc != 0 && argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
+		ipAndPort.first = argv[1];
+		ipAndPort.second = std::stoi(argv[2]);
+	}
+	else {
+		// Prompting for IP and Port
+		ipAndPort = getIP();
+	}
 
-	std::pair<std::string, int> ipAndPort = getIP();
+	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr); // set IP
+	serverAddr.sin_port = htons(ipAndPort.second); // set Port
 
-	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr);
-	serverAddr.sin_port = htons(ipAndPort.second);
-
-	// Connect to server
+	// Connect to server, try to get ipAndPort again if connection fails
 	while (connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
 		std::cerr << "Connection failed.\n";
 
@@ -53,7 +62,7 @@ int main() {
 		serverAddr.sin_port = htons(ipAndPort.second);
 	}
 
-	std::cout << "Connected to server. Type messages, or 'exit' to quit.\n";
+	std::cout << "Connected to server. Type messages, /help for info, or /exit to quit.\n";
 	// Start the receiving thread
 	std::thread receiver(receiveMessages, sock);
 	receiver.detach();
@@ -100,10 +109,7 @@ std::pair<std::string, int> getIP() {
 	std::cout << "Enter IP address and Port # > ";
 	std::getline(std::cin, ipAndPort);
 
-	// This is ai generated
-	std::regex regex{ R"~(^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3}|0)$)~" };
-
-	while (!std::regex_match(ipAndPort, regex)) {
+	while (!validateIPandPort(ipAndPort)) {
 		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n> ", ipAndPort);
 		std::getline(std::cin, ipAndPort);
 	}
@@ -111,4 +117,11 @@ std::pair<std::string, int> getIP() {
 	std::string::size_type split = ipAndPort.find(':');
 
 	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
+}
+
+bool validateIPandPort(std::string input) {
+	// This is ai generated
+	std::regex regex{ R"~(^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3}|0)$)~" };
+
+	return std::regex_match(input, regex);
 }
