@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 
 	std::pair<std::string, int> ipAndPort;
 
-	if (argc != 0 && argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
+	if (argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
 		ipAndPort.first = argv[1];
 		ipAndPort.second = std::stoi(argv[2]);
 	}

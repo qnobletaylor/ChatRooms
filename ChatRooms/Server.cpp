@@ -88,7 +88,7 @@ void handleClient(SOCKET clientSocket);
 /**
  * Broadcast a mesage to a room, given a room name and the message.
  */
-void broadcastToRoom(const std::string& roomName, const std::string& msg);
+void broadcastToRoom(const std::string& roomName, const std::string& msg, const User& user);
 
 /**
  * Broadcasts a message to every room on the server so long as it's not empty.
@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
 
 	std::pair<std::string, int> ipAndPort;
 
-	if (argc != 0 && argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
+	if (argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
 		ipAndPort.first = argv[1];
 		ipAndPort.second = std::stoi(argv[2]);
 	}
@@ -282,7 +282,7 @@ void handleClient(SOCKET clientSocket) {
 				std::string output = std::format("<{}>[{}]: {}\n", msg.timeStamp, user.username, msg.message);
 
 				// Echo back
-				broadcastToRoom(user.currentRoom, output);
+				broadcastToRoom(user.currentRoom, output, user);
 			}
 
 		}
@@ -300,16 +300,16 @@ void handleClient(SOCKET clientSocket) {
 }
 
 
-void broadcastToRoom(const std::string& roomName, const std::string& msg) {
+void broadcastToRoom(const std::string& roomName, const std::string& msg, const User& user) {
 	std::cout << roomName << " | " << msg; // Print in server console
 
-	for (const auto& client : roomList.at(roomName).getUsers()) { // Does not send the message back to the user that sent it
-		send(client.clientSocket, msg.c_str(), msg.size(), 0);
+	for (const auto& client : roomList.at(roomName).getUsers()) {// Does not send the message back to the user that sent it
+		if (user.username != client.username) send(client.clientSocket, msg.c_str(), msg.size(), 0);
 	}
 }
 
 void broadcastToServer(const std::string& msg) {
-	for (auto& room : roomList) {
+	for (const auto& room : roomList) {
 		if (room.second.getUsers().empty());
 		else {
 			for (const auto& user : room.second.getUsers()) {
@@ -334,37 +334,40 @@ void userCommand(const std::string& msg, User& user) {
 
 		if (!roomList.contains(param)) {
 			std::string infoUser = std::format("Created and moved to {}\n", param);
+			std::string informRoom = std::format("{} moved to {}\n", user.username, param);
 			std::string infoServer = std::format("{} created new room {}\n", user.username, param);
+			broadcastToRoom(user.currentRoom, informRoom, user); // Inform room that a user has left
 
-			roomList[param] = Room(param, user);
-			Room::moveUser(user, roomList[user.currentRoom], roomList[param]);
+			roomList[param] = Room(param, user); // Create new room
+			Room::moveUser(user, roomList[user.currentRoom], roomList[param]); // Move user to the new room
 
-			std::cout << infoServer;
-			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
+			std::cout << infoServer; // server logging
+
+			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0); // Inform user they've created the room and moved
 		}
 		else {
 			std::string errorMsg{ "The room " + param + " already exists, try another name.\n" };
-			send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0);
+			send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0); // In case of attempting to create already exisitng room
 		}
 	}
 	else if (cmd == "JOIN_ROOM") {
 
 		if (roomList.contains(param)) {
-			std::string infoUser = std::format("Moved to {}, currently {} other users in this room\n", param, roomList[param].getSize());
+			std::string infoUser = std::format("Moved to {}, currently {} other users in this room\n", param, roomList[param].getSize() - 1);
 			std::string infoServer = std::format("{} moved to {}\n", user.username, param);
 
 
-			broadcastToRoom(user.currentRoom, infoServer); // Don't send to user that moved...
-			Room::moveUser(user, roomList[user.currentRoom], roomList[param]);
+			broadcastToRoom(user.currentRoom, infoServer, user); // Inform room that a user has moved to new room
+			Room::moveUser(user, roomList[user.currentRoom], roomList[param]); // move user
 
-			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
+			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0); // Inform that user they've moved, as well as how many people are in the room
 		}
 		else {
 			std::string errorMsg{ "The room " + param + " does not exist.\n" };
-			send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0);
+			send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0); // Error msg to user in case room doesn't exist
 		}
 	}
-	else if (cmd == "LIST_ROOMS") {
+	else if (cmd == "LIST_ROOMS") { // List all rooms in the server and # of users in each room
 
 		std::string rooms{ "Listing Rooms:\n" };
 		for (const auto& room : roomList) {
@@ -374,7 +377,7 @@ void userCommand(const std::string& msg, User& user) {
 
 		send(user.clientSocket, rooms.c_str(), rooms.size(), 0);
 	}
-	else if (cmd == "LIST_USERS") {
+	else if (cmd == "LIST_USERS") { // List usernames in the user's current room
 
 		std::string usersString{};
 		if (param == cmd) {
@@ -387,11 +390,11 @@ void userCommand(const std::string& msg, User& user) {
 		send(user.clientSocket, usersString.c_str(), usersString.size(), 0);
 
 	}
-	else if (cmd == "EXIT") {
+	else if (cmd == "EXIT") { // Leaves the server gracefully
 		std::string infoUser{ "Leaving server..." };
 		std::string infoServer{ user.username + " left the server.\n" };
 
-		broadcastToRoom(user.currentRoom, infoServer);
+		broadcastToRoom(user.currentRoom, infoServer, user);
 		send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
 
 		closesocket(user.clientSocket);
