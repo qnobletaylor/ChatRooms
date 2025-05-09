@@ -49,6 +49,8 @@ int main(int argc, char* argv[]) {
 		ipAndPort = getIP();
 	}
 
+	// Open firewall port on remote desktop
+
 	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr); // set IP
 	serverAddr.sin_port = htons(ipAndPort.second); // set Port
 

@@ -1,6 +1,8 @@
 #include "gtest/gtest.h"
 #include <string>
 #include <regex>
+#include <sstream>
+#include <iomanip>
 #include "../ChatRooms/Room.h"
 #include "../ChatRooms/User.h"
 
@@ -27,14 +29,20 @@ TEST(Regex, port) {
 }
 
 TEST(StringSplitting, cmdAndParam) {
-	std::string msg = "/CREATE_ROOM Test";
-	size_t firstSpace = msg.find(' ');
-	std::string cmd = msg.substr(1, firstSpace - 1);
-	std::string param = msg.substr(firstSpace + 1, msg.find(' ', firstSpace + 1));
+	std::string msg1 = "/CREATE_ROOM Test";
+	size_t firstSpace = msg1.find(' ');
+	std::string cmd1 = msg1.substr(1, firstSpace - 1);
+	std::string param1 = msg1.substr(firstSpace + 1, msg1.find(' ', firstSpace + 1));
 
-	ASSERT_EQ(cmd, "CREATE_ROOM");
-	ASSERT_EQ(param, "Test");
+	ASSERT_EQ(cmd1, "CREATE_ROOM");
+	ASSERT_EQ(param1, "Test");
 
+	std::string msg2 = "/LIST_USERS";
+	firstSpace = msg2.find(' ');
+	std::string cmd2 = msg2.substr(1, firstSpace - 1);
+	std::string param2 = msg2.substr(firstSpace + 1, msg2.find(' ', firstSpace + 1));
+
+	ASSERT_EQ(param2, msg2);
 }
 
 TEST(UserTest, comparisons) {

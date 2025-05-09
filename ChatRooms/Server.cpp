@@ -1,13 +1,13 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <format>
 #include <sstream>
 #include <winsock2.h>
 #include <thread>
 #include <vector>
 #include <set>
 #include <map>
-#include <format>
 #include <ws2tcpip.h>
 #include <ctime>
 #include <regex>
@@ -20,6 +20,7 @@
 
 /**
  * TODO
+ *		- Look up *Object Pools*
  *
  *		> History <
  *		- Create a form of history for all sent messages, so that when new users connect then on joining the user can get
@@ -58,9 +59,9 @@ std::string help{
 	"\tFor example to create a new room use /CREATE_ROOM Study (commands are case insensitive)\n"
 };
 
-int getPort();
+std::pair<std::string, int> getIP();
 
-bool validatePort(const std::string port);
+bool validateIPandPort(std::string input);
 
 /**
  * Gets the current time and formats it into a string of "hour:min:sec"
@@ -132,17 +133,19 @@ int main(int argc, char* argv[]) {
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY; // Listen on any interface
 
-	u_short portNum{};
-	if (argc != 0 && argc >= 1 && validatePort(argv[1])) {
-		portNum = std::stoi(argv[1]);
+	std::pair<std::string, int> ipAndPort;
+
+	if (argc != 0 && argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
+		ipAndPort.first = argv[1];
+		ipAndPort.second = std::stoi(argv[2]);
 	}
 	else {
-		// Prompting for Port
-		portNum = getPort();
+		// Prompting for IP and Port
+		ipAndPort = getIP();
 	}
 
-	serverAddr.sin_port = htons(portNum);
-	inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
+	serverAddr.sin_port = htons(ipAndPort.second);
+	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr);
 
 	// Bind
 	if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
@@ -154,7 +157,7 @@ int main(int argc, char* argv[]) {
 
 	// Listen
 	listen(serverSocket, SOMAXCONN);
-	std::cout << "Server listening on port " << portNum << " ...\n";
+	std::cout << "Server listening on port " << ipAndPort.second << " ...\n";
 
 	std::thread acceptThread(acceptClients, serverSocket);
 	acceptThread.detach();
@@ -175,23 +178,26 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-int getPort() {
-	std::string port{};
-	std::cout << "Enter a port # > ";
-	std::getline(std::cin, port);
+std::pair<std::string, int> getIP() {
+	std::string ipAndPort{};
+	std::cout << "Enter IP address and Port # > ";
+	std::getline(std::cin, ipAndPort);
 
-	while (!validatePort(port)) {
-		std::cout << std::format("You entered: {}, please try again with a valid port 0-65535\n> ", port);
-		std::getline(std::cin, port);
+	while (!validateIPandPort(ipAndPort)) {
+		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n> ", ipAndPort);
+		std::getline(std::cin, ipAndPort);
 	}
 
-	return std::stoi(port);
+	std::string::size_type split = ipAndPort.find(':');
+
+	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
 }
 
-bool validatePort(const std::string port) {
-	std::regex regex{ R"~(^(0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$)~" };
+bool validateIPandPort(std::string input) {
+	// This is ai generated
+	std::regex regex{ R"~(^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3}|0)$)~" };
 
-	return std::regex_match(port, regex);
+	return std::regex_match(input, regex);
 }
 
 std::string getTime() {

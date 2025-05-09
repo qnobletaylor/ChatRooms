@@ -18,7 +18,7 @@ bool Room::removeUser(const User& user) {
 bool Room::addUser(User& user) {
 	std::lock_guard<std::mutex> guard(mutex);
 	user.currentRoom = name;
-	return userList.insert(user).second;
+	return userList.insert(user).second; // Check if emplace vs insert would be better (i.e. copy or move?)
 }
 
 bool Room::hasUser(const User& user) const {
