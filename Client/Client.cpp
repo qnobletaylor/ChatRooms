@@ -16,7 +16,7 @@ void receiveMessages(SOCKET sock);
  *  */
 std::pair<std::string, int> getIP();
 
-void printToOutput(std::string msg);
+void printToOutput(const char* msg);
 
 bool validateIPandPort(std::string input);
 
@@ -24,6 +24,7 @@ std::string getInput();
 
 WINDOW* outputWin;
 WINDOW* inputWin;
+WINDOW* lobbyWin;
 
 int main(int argc, char* argv[]) {
 	WSADATA wsaData;
@@ -49,26 +50,31 @@ int main(int argc, char* argv[]) {
 	std::pair<std::string, int> ipAndPort;
 
 
-	// ncurses start
+	/* NCURSES INIT */
 	initscr();
-	/*raw();*/
 	//cbreak();
 	//noecho();
 
 	// Borders for input and output windows
 	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);
 	WINDOW* inputBorder = newwin(5, getmaxx(outputBorder), getmaxy(outputBorder), 0);
+	WINDOW* lobbyBorder = newwin(25, 19, 0, getmaxx(outputBorder) + 1);
 
 	outputWin = newwin(23, getmaxx(outputBorder) - 2, 1, 1); // For displaying messages
 	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
-	scrollok(outputWin, true);
+	lobbyWin = newwin(23, getmaxx(lobbyBorder) - 2, 1, 1);
+	scrollok(outputWin, true); // allows the text to continue scrolling outside of the window
 	refresh();
 	box(outputBorder, 0, 0);
 	box(inputBorder, 0, 0);
+	box(lobbyBorder, 0, 0);
 	wrefresh(outputBorder);
 	wrefresh(inputBorder);
+	wrefresh(lobbyBorder);
 	wrefresh(outputWin);
 	wrefresh(inputWin);
+
+	/* END NCURSES INIT */
 
 	if (argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
 		ipAndPort.first = argv[1];
@@ -120,8 +126,7 @@ void receiveMessages(SOCKET sock) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
-			std::string msg(buffer, bytesReceived);
-			printToOutput(msg);
+			printToOutput(buffer);
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Server disconnected.\n";
@@ -143,7 +148,7 @@ std::pair<std::string, int> getIP() {
 
 	while (!validateIPandPort(ipAndPort)) {
 		std::string error = std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n", ipAndPort);
-		printToOutput(error);
+		printToOutput(error.c_str());
 		ipAndPort = getInput();
 	}
 
@@ -159,20 +164,19 @@ bool validateIPandPort(std::string input) {
 	return std::regex_match(input, regex);
 }
 
-void printToOutput(std::string msg) {
-	std::cout << msg << "\n";
-	waddstr(outputWin, msg.c_str());
-	wrefresh(outputWin);
-	wmove(inputWin, 0, 0);
-	wrefresh(inputWin);
+void printToOutput(const char* msg) {
+	waddstr(outputWin, msg); // print msg
+	wrefresh(outputWin); // refresh to appear in window
+	wmove(inputWin, 0, 0); // move cursor back to input
+	wrefresh(inputWin); // refresh to see new cursor position
 }
 
 std::string getInput() {
 	char inputStr[1000];
-	wgetstr(inputWin, inputStr);
-	wclear(inputWin);
-	wmove(inputWin, 0, 0);
-
+	wgetstr(inputWin, inputStr); // Take line input till \n
+	wclear(inputWin); // clear the window
+	wmove(inputWin, 0, 0); // move cursor back to start of window
+	wrefresh(inputWin); // refresh window
 
 	return std::string(inputStr);
 }
