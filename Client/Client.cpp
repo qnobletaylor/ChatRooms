@@ -17,19 +17,24 @@ void receiveMessages(SOCKET sock);
 std::pair<std::string, int> getIP();
 
 /**
- * Prints a C-string to the output ncurses window.
- */
-void printToOutput(const char* msg);
-
-/**
  * Validates a string so that it matches a regex which checks that the string is an ip and port within range, ex 0.0.0.0:[0-65535].
  */
 bool validateIPandPort(std::string input);
 
 /**
+ * Prints a C-string to the output ncurses window.
+ */
+void printToOutput(const char* msg);
+
+/**
  * Allows a user to write and submit input in the input ncurses window.
  */
 std::string getInput();
+
+/**
+ * Will print room information taken as a string to the roomWindow.
+ */
+void updateRooms(const std::string& rooms);
 
 WINDOW* outputWin;
 WINDOW* inputWin;
@@ -71,7 +76,7 @@ int main(int argc, char* argv[]) {
 
 	outputWin = newwin(23, getmaxx(outputBorder) - 2, 1, 1); // For displaying messages
 	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
-	roomsWin = newwin(23, getmaxx(roomsBorder) - 2, 1, 1);
+	roomsWin = newwin(23, getmaxx(roomsBorder) - 2, 1, getbegx(roomsBorder) + 1);
 	scrollok(outputWin, true); // allows the text to continue scrolling outside of the window
 	refresh();
 	box(outputBorder, 0, 0);
@@ -82,6 +87,7 @@ int main(int argc, char* argv[]) {
 	wrefresh(roomsBorder);
 	wrefresh(outputWin);
 	wrefresh(inputWin);
+	wrefresh(roomsWin);
 
 	/* END NCURSES INIT */
 
@@ -135,7 +141,9 @@ void receiveMessages(SOCKET sock) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
-			printToOutput(buffer);
+			std::string msg(buffer, bytesReceived);
+			if (msg.at(0) == '0') updateRooms(msg);
+			else printToOutput(buffer);
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Server disconnected.\n";
@@ -181,11 +189,21 @@ void printToOutput(const char* msg) {
 }
 
 std::string getInput() {
-	char inputStr[1000];
+	char inputStr[1024];
 	wgetstr(inputWin, inputStr); // Take line input till \n
 	wclear(inputWin); // clear the window
 	wmove(inputWin, 0, 0); // move cursor back to start of window
 	wrefresh(inputWin); // refresh window
 
 	return std::string(inputStr);
+}
+
+void updateRooms(const std::string& rooms) {
+	std::string temp = rooms.substr(1);
+
+	wmove(roomsWin, 0, 0); // Move cursor to beginning of roomsWin
+	waddstr(roomsWin, temp.c_str()); // print to roomsWin
+	wrefresh(roomsWin);
+	wmove(inputWin, 0, 0); // move cursor back to inputWin
+	wrefresh(inputWin);
 }

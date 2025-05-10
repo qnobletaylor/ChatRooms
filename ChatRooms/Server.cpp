@@ -43,9 +43,8 @@
 
 
  // Let's figure out a way to make these not globals if possible.
-std::mutex usernameListMutex;
+std::mutex usernameListMutex, roomListMutex;
 std::set<std::string> usernameList{}; // Global variable for connected users
-std::mutex roomListMutex;
 std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} }; // Initial room which all users start in will be known as the lobby
 std::string help{
 	"\t\t** List of Commands **\n\n"
@@ -110,6 +109,15 @@ std::string usersToString();
  */
 std::string usersToString(Room room);
 
+/**
+ * Returns a string listing all rooms in the server as well as an indicator (<) for which room the user is in.
+ */
+std::string listRooms(const User& user);
+
+/**
+ * Sends a string representation of rooms on the server to each client.
+ *  */
+void updateClientRoomList();
 
 int main(int argc, char* argv[]) {
 	WSADATA wsaData;
@@ -268,8 +276,8 @@ void handleClient(SOCKET clientSocket) {
 
 	std::cout << std::format("{} Connected to server.\n", user.username);
 
-	roomList.at("Lobby").addUser(user);
-
+	roomList.at("Lobby").addUser(user); // Add user to default room (Lobby)
+	broadcastToRoom("Lobby", (user.username + " has joined the Lobby\n"));
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
@@ -281,10 +289,8 @@ void handleClient(SOCKET clientSocket) {
 			else {
 				std::string output = std::format("<{}>[{}]: {}\n", msg.timeStamp, user.username, msg.message);
 
-				// Echo back
-				broadcastToRoom(user.currentRoom, output);
+				broadcastToRoom(user.currentRoom, output); // Echo back
 			}
-
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Client disconnected gracefully.\n";
@@ -319,6 +325,20 @@ void broadcastToServer(const std::string& msg) {
 	}
 }
 
+void updateClientRoomList() {
+	std::this_thread::sleep_for(std::chrono::milliseconds(500)); // temporary fix
+	std::string msg{};
+	for (const auto& room : roomList) {
+		if (room.second.getUsers().empty());
+		else {
+			for (const auto& user : room.second.getUsers()) {
+				msg = ("0" + listRooms(user)); // Should probably differentiate this message in another way
+				send(user.clientSocket, msg.c_str(), msg.size(), 0);
+			}
+		}
+	}
+}
+
 void userCommand(const std::string& msg, User& user) {
 	size_t firstSpace = msg.find(' ');
 	std::string cmd = msg.substr(1, firstSpace - 1);
@@ -338,12 +358,14 @@ void userCommand(const std::string& msg, User& user) {
 			std::string infoServer = std::format("{} created new room {}\n", user.username, param);
 			broadcastToRoom(user.currentRoom, informRoom); // Inform room that a user has left
 
-			roomList[param] = Room(param, user); // Create new room
+			//std::lock_guard<std::mutex> guard(roomListMutex);
+			roomList[param] = Room(param); // Create new room
 			Room::moveUser(user, roomList[user.currentRoom], roomList[param]); // Move user to the new room
 
 			std::cout << infoServer; // server logging
 
 			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0); // Inform user they've created the room and moved
+			updateClientRoomList(); // Update client's roomlist
 		}
 		else {
 			std::string errorMsg{ "The room " + param + " already exists, try another name.\n" };
@@ -353,7 +375,7 @@ void userCommand(const std::string& msg, User& user) {
 	else if (cmd == "JOIN_ROOM") {
 
 		if (roomList.contains(param)) {
-			std::string infoUser = std::format("Moved to {}, currently {} other users in this room\n", param, roomList[param].getSize() - 1);
+			std::string infoUser = std::format("Moved to {}, currently {} other users in this room\n", param, roomList[param].getSize());
 			std::string infoServer = std::format("{} moved to {}\n", user.username, param);
 
 
@@ -361,6 +383,7 @@ void userCommand(const std::string& msg, User& user) {
 			Room::moveUser(user, roomList[user.currentRoom], roomList[param]); // move user
 
 			send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0); // Inform that user they've moved, as well as how many people are in the room
+			updateClientRoomList(); // Update client's roomlist
 		}
 		else {
 			std::string errorMsg{ "The room " + param + " does not exist.\n" };
@@ -370,10 +393,8 @@ void userCommand(const std::string& msg, User& user) {
 	else if (cmd == "LIST_ROOMS") { // List all rooms in the server and # of users in each room
 
 		std::string rooms{ "Listing Rooms:\n" };
-		for (const auto& room : roomList) {
-			if (user.currentRoom == room.first) rooms += std::format("> {} [{} users]\n", room.first, room.second.getSize());
-			else rooms += std::format("  {} [{} users]\n", room.first, room.second.getSize());
-		}
+
+		rooms += listRooms(user);
 
 		send(user.clientSocket, rooms.c_str(), rooms.size(), 0);
 	}
@@ -396,6 +417,9 @@ void userCommand(const std::string& msg, User& user) {
 
 		broadcastToRoom(user.currentRoom, infoServer);
 		send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
+		roomList[user.currentRoom].removeUser(user); // Remove the client from their room
+		usernameList.erase(user.username); // Remove their name from the list of usernames
+		updateClientRoomList(); // Update client's roomlist
 
 		closesocket(user.clientSocket);
 	}
@@ -427,4 +451,14 @@ std::string usersToString(Room room) {
 	}
 
 	return ss.str();
+}
+
+std::string listRooms(const User& user) {
+	std::string rooms{};
+	for (const auto& room : roomList) {
+		if (user.currentRoom == room.first) rooms += std::format(">{}<\n  [{} users]\n", room.first, room.second.getSize());
+		else rooms += std::format("{}\n  [{} users]\n", room.first, room.second.getSize());
+	}
+
+	return rooms;
 }

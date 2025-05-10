@@ -3,7 +3,7 @@
 
 std::mutex mutex;
 
-Room::Room() : Room("test") {}
+Room::Room() : Room("Lobby") {}
 
 Room::Room(const std::string& name, User& firstUser) : Room(name) {
 	this->creator = firstUser;
