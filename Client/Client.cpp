@@ -69,6 +69,8 @@ int main(int argc, char* argv[]) {
 	//cbreak();
 	//noecho();
 
+
+
 	// Borders for input and output windows
 	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);
 	WINDOW* inputBorder = newwin(5, getmaxx(outputBorder), getmaxy(outputBorder), 0);
@@ -77,14 +79,22 @@ int main(int argc, char* argv[]) {
 	outputWin = newwin(23, getmaxx(outputBorder) - 2, 1, 1); // For displaying messages
 	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
 	roomsWin = newwin(23, getmaxx(roomsBorder) - 2, 1, getbegx(roomsBorder) + 1);
+
 	scrollok(outputWin, true); // allows the text to continue scrolling outside of the window
+	leaveok(outputWin, true); // Don't show cursor when printing in this window
+	leaveok(roomsWin, true);
+	curs_set(1); // show cursor
 	refresh();
+
+
 	box(outputBorder, 0, 0);
 	box(inputBorder, 0, 0);
 	box(roomsBorder, 0, 0);
+	// Borders
 	wrefresh(outputBorder);
 	wrefresh(inputBorder);
 	wrefresh(roomsBorder);
+	// Text input/display
 	wrefresh(outputWin);
 	wrefresh(inputWin);
 	wrefresh(roomsWin);
@@ -184,8 +194,8 @@ bool validateIPandPort(std::string input) {
 void printToOutput(const char* msg) {
 	waddstr(outputWin, msg); // print msg
 	wrefresh(outputWin); // refresh to appear in window
-	wmove(inputWin, 0, 0); // move cursor back to input
-	wrefresh(inputWin); // refresh to see new cursor position
+	//wmove(inputWin, 0, 0); // move cursor back to input
+	//wrefresh(inputWin); // refresh to see new cursor position
 }
 
 std::string getInput() {
@@ -204,6 +214,6 @@ void updateRooms(const std::string& rooms) {
 	wmove(roomsWin, 0, 0); // Move cursor to beginning of roomsWin
 	waddstr(roomsWin, temp.c_str()); // print to roomsWin
 	wrefresh(roomsWin);
-	wmove(inputWin, 0, 0); // move cursor back to inputWin
-	wrefresh(inputWin);
+	//wmove(inputWin, 0, 0); // move cursor back to inputWin
+	//wrefresh(inputWin);
 }

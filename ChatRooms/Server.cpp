@@ -278,6 +278,7 @@ void handleClient(SOCKET clientSocket) {
 
 	roomList.at("Lobby").addUser(user); // Add user to default room (Lobby)
 	broadcastToRoom("Lobby", (user.username + " has joined the Lobby\n"));
+	updateClientRoomList(); // Update room list on client side when new users join
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
