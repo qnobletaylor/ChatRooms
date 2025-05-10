@@ -5,11 +5,6 @@ std::mutex mutex;
 
 Room::Room() : Room("Lobby") {}
 
-Room::Room(const std::string& name, User& firstUser) : Room(name) {
-	this->creator = firstUser;
-	userList.insert(firstUser);
-}
-
 bool Room::removeUser(const User& user) {
 	std::lock_guard<std::mutex> guard(mutex);
 	return hasUser(user) ? userList.erase(user) : false;
@@ -34,12 +29,4 @@ bool Room::moveUser(User& user, Room& current, Room& dest) {
 	}
 	else
 		return false;
-}
-
-bool Room::changeName(const User& user, const std::string& newName) {
-	if (user == creator) {
-		name = newName;
-		return true;
-	}
-	else return false;
 }
