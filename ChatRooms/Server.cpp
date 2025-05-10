@@ -340,8 +340,7 @@ void updateClientRoomList() {
 void userCommand(const std::string& msg, User& user) {
 	size_t firstSpace = msg.find(' ');
 	std::string cmd = msg.substr(1, firstSpace - 1);
-	//Currently only takes the first word after command, expand to including multi words denoted by " "
-	std::string param = msg.substr(firstSpace + 1, msg.find(' ', firstSpace + 1) - firstSpace);
+	std::string param = msg.substr(firstSpace + 1, msg.find(' ', firstSpace + 1)); // returns everything after the cmd
 
 
 	for (auto& c : cmd) c = std::toupper(c);
@@ -422,7 +421,7 @@ void userCommand(const std::string& msg, User& user) {
 std::string usersToString(std::string roomName) {
 	int i = 1;
 	std::stringstream ss{};
-	if (roomName == "Sever") { // Default will list all users on the server
+	if (roomName == "Server") { // Default will list all users on the server
 		ss << "[" << usernameList.size() << " Users in Server]\n";
 		for (const auto& user : usernameList) {
 			ss << std::setw(10) << user << " | ";
@@ -437,9 +436,10 @@ std::string usersToString(std::string roomName) {
 		}
 	}
 
-	if (i % 5 != 0) ss << "\n"; // Add a new line if it wasn't already at the end of the string
+	std::string temp = ss.str();
+	if (temp.back() == '|') temp.back() = '\n'; // If last entry was a | then replace it with \n
 
-	return ss.str();
+	return temp;
 }
 
 std::string listRooms(const User& user) {
