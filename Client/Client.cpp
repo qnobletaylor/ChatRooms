@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
 		serverAddr.sin_port = htons(ipAndPort.second);
 	}
 
-	std::cout << "Connected to server. Type messages, /help for info, or /exit to quit.\n";
+	printToOutput("Connected to server. Type messages, /help for info, or /exit to quit.\n");
 	// Start the receiving thread
 	std::thread receiver(receiveMessages, sock, inputWin, outputWin);
 	receiver.detach();
@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 	// Send loop
 	std::string input{};
 	while (true) {
-		std::getline(std::cin, input);
+		input = getInput();
 		if (input == "exit") break;
 
 		send(sock, input.c_str(), input.size(), 0);
@@ -118,7 +118,8 @@ void receiveMessages(SOCKET sock, WINDOW* inputWin, WINDOW* outputWin) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
-			printToOutput(buffer);
+			std::string msg(buffer, bytesReceived);
+			printToOutput(msg.c_str());
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Server disconnected.\n";
@@ -163,6 +164,7 @@ void printToOutput(const char* msg) {
 	//wprintw(outputWin, msg);
 	wprintw(outputWin, msg);
 	wrefresh(outputWin);
+	wmove(inputWin, 0, 0);
 }
 
 std::string getInput() {
