@@ -9,14 +9,14 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 // Function to receive messages in a separate thread
-void receiveMessages(SOCKET sock, WINDOW* inputWin, WINDOW* outputWin);
+void receiveMessages(SOCKET sock);
 
 /**
  * Asks the user for an IP address and a port # for which to connect to the server with.
  *  */
-std::pair<std::string, int> getIP(WINDOW* inputWin, WINDOW* outputWin);
+std::pair<std::string, int> getIP();
 
-void printToOutput(const char* msg);
+void printToOutput(std::string msg);
 
 bool validateIPandPort(std::string input);
 
@@ -51,6 +51,8 @@ int main(int argc, char* argv[]) {
 
 	// ncurses start
 	initscr();
+	/*raw();*/
+	//cbreak();
 	//noecho();
 
 	// Borders for input and output windows
@@ -74,7 +76,7 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		// Prompting for IP and Port
-		ipAndPort = getIP(inputWin, outputWin);
+		ipAndPort = getIP();
 	}
 
 
@@ -85,7 +87,7 @@ int main(int argc, char* argv[]) {
 	while (connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
 		std::cerr << "Connection failed.\n";
 
-		std::pair<std::string, int> ipAndPort = getIP(inputWin, outputWin);
+		std::pair<std::string, int> ipAndPort = getIP();
 
 		inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr);
 		serverAddr.sin_port = htons(ipAndPort.second);
@@ -93,7 +95,7 @@ int main(int argc, char* argv[]) {
 
 	printToOutput("Connected to server. Type messages, /help for info, or /exit to quit.\n");
 	// Start the receiving thread
-	std::thread receiver(receiveMessages, sock, inputWin, outputWin);
+	std::thread receiver(receiveMessages, sock);
 	receiver.detach();
 
 	// Send loop
@@ -112,14 +114,14 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-void receiveMessages(SOCKET sock, WINDOW* inputWin, WINDOW* outputWin) {
+void receiveMessages(SOCKET sock) {
 	char buffer[1024];
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
 			std::string msg(buffer, bytesReceived);
-			printToOutput(msg.c_str());
+			printToOutput(msg);
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Server disconnected.\n";
@@ -135,16 +137,13 @@ void receiveMessages(SOCKET sock, WINDOW* inputWin, WINDOW* outputWin) {
 	WSACleanup();
 }
 
-std::pair<std::string, int> getIP(WINDOW* inputWin, WINDOW* outputWin) {
-	char input_str[100];
-	//std::string ipAndPort{};
-	const char* prompt = "Enter IP address and Port #...\n";
-	printToOutput(prompt);
+std::pair<std::string, int> getIP() {
+	printToOutput("Enter IP address and Port #...\n");
 	std::string ipAndPort = getInput();
 
 	while (!validateIPandPort(ipAndPort)) {
 		std::string error = std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n", ipAndPort);
-		printToOutput(error.c_str());
+		printToOutput(error);
 		ipAndPort = getInput();
 	}
 
@@ -160,15 +159,16 @@ bool validateIPandPort(std::string input) {
 	return std::regex_match(input, regex);
 }
 
-void printToOutput(const char* msg) {
-	//wprintw(outputWin, msg);
-	wprintw(outputWin, msg);
+void printToOutput(std::string msg) {
+	std::cout << msg << "\n";
+	waddstr(outputWin, msg.c_str());
 	wrefresh(outputWin);
 	wmove(inputWin, 0, 0);
+	wrefresh(inputWin);
 }
 
 std::string getInput() {
-	char inputStr[100];
+	char inputStr[1000];
 	wgetstr(inputWin, inputStr);
 	wclear(inputWin);
 	wmove(inputWin, 0, 0);
