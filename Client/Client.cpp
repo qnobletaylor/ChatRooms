@@ -16,15 +16,24 @@ void receiveMessages(SOCKET sock);
  *  */
 std::pair<std::string, int> getIP();
 
+/**
+ * Prints a C-string to the output ncurses window.
+ */
 void printToOutput(const char* msg);
 
+/**
+ * Validates a string so that it matches a regex which checks that the string is an ip and port within range, ex 0.0.0.0:[0-65535].
+ */
 bool validateIPandPort(std::string input);
 
+/**
+ * Allows a user to write and submit input in the input ncurses window.
+ */
 std::string getInput();
 
 WINDOW* outputWin;
 WINDOW* inputWin;
-WINDOW* lobbyWin;
+WINDOW* roomsWin;
 
 int main(int argc, char* argv[]) {
 	WSADATA wsaData;
@@ -58,19 +67,19 @@ int main(int argc, char* argv[]) {
 	// Borders for input and output windows
 	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);
 	WINDOW* inputBorder = newwin(5, getmaxx(outputBorder), getmaxy(outputBorder), 0);
-	WINDOW* lobbyBorder = newwin(25, 19, 0, getmaxx(outputBorder) + 1);
+	WINDOW* roomsBorder = newwin(25, 19, 0, getmaxx(outputBorder) + 1);
 
 	outputWin = newwin(23, getmaxx(outputBorder) - 2, 1, 1); // For displaying messages
 	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
-	lobbyWin = newwin(23, getmaxx(lobbyBorder) - 2, 1, 1);
+	roomsWin = newwin(23, getmaxx(roomsBorder) - 2, 1, 1);
 	scrollok(outputWin, true); // allows the text to continue scrolling outside of the window
 	refresh();
 	box(outputBorder, 0, 0);
 	box(inputBorder, 0, 0);
-	box(lobbyBorder, 0, 0);
+	box(roomsBorder, 0, 0);
 	wrefresh(outputBorder);
 	wrefresh(inputBorder);
-	wrefresh(lobbyBorder);
+	wrefresh(roomsBorder);
 	wrefresh(outputWin);
 	wrefresh(inputWin);
 
