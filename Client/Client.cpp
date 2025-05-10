@@ -20,6 +20,8 @@ void printToOutput(const char* msg);
 
 bool validateIPandPort(std::string input);
 
+std::string getInput();
+
 WINDOW* outputWin;
 WINDOW* inputWin;
 
@@ -57,6 +59,7 @@ int main(int argc, char* argv[]) {
 
 	outputWin = newwin(23, getmaxx(outputBorder) - 2, 1, 1); // For displaying messages
 	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
+	scrollok(outputWin, true);
 	refresh();
 	box(outputBorder, 0, 0);
 	box(inputBorder, 0, 0);
@@ -115,7 +118,7 @@ void receiveMessages(SOCKET sock, WINDOW* inputWin, WINDOW* outputWin) {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
-			std::cout << std::string(buffer, bytesReceived);
+			printToOutput(buffer);
 		}
 		else if (bytesReceived == 0) {
 			std::cout << "Server disconnected.\n";
@@ -136,24 +139,14 @@ std::pair<std::string, int> getIP(WINDOW* inputWin, WINDOW* outputWin) {
 	//std::string ipAndPort{};
 	const char* prompt = "Enter IP address and Port #...\n";
 	printToOutput(prompt);
-	wrefresh(outputWin);
-	move(getbegy(inputWin), getbegx(inputWin));
-	getstr(input_str);
-	wrefresh(inputWin);
-	//std::getline(std::cin, ipAndPort);
+	std::string ipAndPort = getInput();
 
-	while (!validateIPandPort(input_str)) {
-		std::string error = std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n", input_str);
-		//mvwprintw(outputWin, outputWin->_maxy - 2, 1, error.c_str());
+	while (!validateIPandPort(ipAndPort)) {
+		std::string error = std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n", ipAndPort);
 		printToOutput(error.c_str());
-		wrefresh(outputWin);
-		move(getbegy(inputWin), getbegx(inputWin));
-		getstr(input_str);
-		wrefresh(inputWin);
-		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n", input_str);
-		//std::getline(std::cin, ipAndPort);
+		ipAndPort = getInput();
 	}
-	std::string ipAndPort = input_str;
+
 	std::string::size_type split = ipAndPort.find(':');
 
 	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
@@ -168,5 +161,16 @@ bool validateIPandPort(std::string input) {
 
 void printToOutput(const char* msg) {
 	//wprintw(outputWin, msg);
-	waddstr(outputWin, msg);
+	wprintw(outputWin, msg);
+	wrefresh(outputWin);
+}
+
+std::string getInput() {
+	char inputStr[100];
+	wgetstr(inputWin, inputStr);
+	wclear(inputWin);
+	wmove(inputWin, 0, 0);
+
+
+	return std::string(inputStr);
 }
