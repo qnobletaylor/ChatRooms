@@ -111,6 +111,8 @@ std::string usersToString(std::string roomName = "Server");
  */
 std::string listRooms(const User& user);
 
+void removeUser(User& user);
+
 /**
  * Sends a string representation of rooms on the server to each client.
  *  */
@@ -295,7 +297,8 @@ void handleClient(SOCKET clientSocket) {
 			break;
 		}
 		else {
-			std::cerr << "recv failed.\n";
+			std::cout << user.username << " recv error, removed from server.";
+			removeUser(user);
 			break;
 		}
 	}
@@ -406,11 +409,7 @@ void userCommand(const std::string& msg, User& user) {
 
 		broadcastToRoom(user.currentRoom, infoServer);
 		send(user.clientSocket, infoUser.c_str(), infoUser.size(), 0);
-		roomList[user.currentRoom].removeUser(user); // Remove the client from their room
-		usernameList.erase(user.username); // Remove their name from the list of usernames
-		updateClientRoomList(); // Update client's roomlist
-
-		closesocket(user.clientSocket);
+		removeUser(user);
 	}
 	else {
 		std::string errorMsg = (cmd + " is an unknown command, try /HELP for a list of commands.\n");
@@ -437,7 +436,10 @@ std::string usersToString(std::string roomName) {
 	}
 
 	std::string temp = ss.str();
-	if (temp.back() == '|') temp.back() = '\n'; // If last entry was a | then replace it with \n
+	if (*(temp.rbegin() + 1) == '|') {
+		*(temp.rbegin() + 1) = '\n';
+		*temp.rbegin() = '\0';
+	} // If last entry was a | then replace it with \n
 
 	return temp;
 }
@@ -450,4 +452,12 @@ std::string listRooms(const User& user) {
 	}
 
 	return rooms;
+}
+
+void removeUser(User& user) {
+	roomList[user.currentRoom].removeUser(user); // Remove the client from their room
+	usernameList.erase(user.username); // Remove their name from the list of usernames
+	updateClientRoomList(); // Update client's roomlist
+
+	closesocket(user.clientSocket);
 }
