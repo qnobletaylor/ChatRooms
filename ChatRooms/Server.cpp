@@ -39,6 +39,9 @@
  *
  *		> Audio ** <
  *		- Maybe text to speech
+ *
+ *
+ *		- Server needs to remove users when they leave or timeout... if not then they will get duplicate sends because their socket info is still saved
  */
 
 
@@ -50,7 +53,6 @@ std::string help{
 	"\t\t** List of Commands **\n\n"
 	"CREATE_ROOM <name>\n\tCreate a new room and move to it.\n"
 	"JOIN_ROOM <name>\n\tMove to another existing room.\n"
-	"LIST_ROOMS\n\tDisplay a list of all rooms on the server and how many users are in each room.\n"
 	"LIST_USERS <room = Lobby>\n\tLists users within a given room or if no argument is given lists all users in server.\n"
 	"EXIT\n\tExit the server.\n"
 	"HELP\n\tDisplay this list of commands.\n\n"
@@ -100,14 +102,9 @@ void broadcastToServer(const std::string& msg);
 void userCommand(const std::string& cmd, User& user);
 
 /**
- * Returns a string formatted list of users in the server.
- */
-std::string usersToString();
-
-/**
  * Returns a string formatted list of users within a given room.
  */
-std::string usersToString(Room room);
+std::string usersToString(std::string roomName = "Server");
 
 /**
  * Returns a string listing all rooms in the server as well as an indicator (<) for which room the user is in.
@@ -391,22 +388,14 @@ void userCommand(const std::string& msg, User& user) {
 			send(user.clientSocket, errorMsg.c_str(), errorMsg.size(), 0); // Error msg to user in case room doesn't exist
 		}
 	}
-	else if (cmd == "LIST_ROOMS") { // List all rooms in the server and # of users in each room
-
-		std::string rooms{ "Listing Rooms:\n" };
-
-		rooms += listRooms(user);
-
-		send(user.clientSocket, rooms.c_str(), rooms.size(), 0);
-	}
 	else if (cmd == "LIST_USERS") { // List usernames in the user's current room
 
 		std::string usersString{};
-		if (param == cmd) {
+		if (param == msg) {
 			usersString = usersToString();
 		}
 		else {
-			usersString = roomList.contains(param) ? usersToString(roomList[param]) : (param + " does not exist.");
+			usersString = roomList.contains(param) ? usersToString(param) : ("Room [" + param + "] does not exist.\n");
 		}
 
 		send(user.clientSocket, usersString.c_str(), usersString.size(), 0);
@@ -430,26 +419,25 @@ void userCommand(const std::string& msg, User& user) {
 	}
 }
 
-std::string usersToString() {
-	std::stringstream ss{};
+std::string usersToString(std::string roomName) {
 	int i = 1;
-	ss << "[" << usernameList.size() << " Users]\n";
-	for (const auto& user : usernameList) {
-		ss << std::setw(10) << user << " | ";
-		if (i++ % 5 == 0) ss << "\n";
+	std::stringstream ss{};
+	if (roomName == "Sever") { // Default will list all users on the server
+		ss << "[" << usernameList.size() << " Users in Server]\n";
+		for (const auto& user : usernameList) {
+			ss << std::setw(10) << user << " | ";
+			if (i++ % 5 == 0) ss << "\n";
+		}
+	}
+	else { // When a room is specified
+		ss << "[" << roomList[roomName].getSize() << " Users in " << roomName << "]\n";
+		for (const auto& user : roomList[roomName].getUsers()) {
+			ss << std::setw(10) << user.username << " | ";
+			if (i++ % 5 == 0) ss << "\n";
+		}
 	}
 
-	return ss.str();
-}
-
-std::string usersToString(Room room) {
-	std::stringstream ss{};
-	int i = 1;
-	ss << "[" << usernameList.size() << " Users]\n";
-	for (const auto& user : room.getUsers()) {
-		ss << std::setw(10) << user.username << " | ";
-		if (i++ % 5 == 0) ss << "\n";
-	}
+	if (i % 5 != 0) ss << "\n"; // Add a new line if it wasn't already at the end of the string
 
 	return ss.str();
 }
