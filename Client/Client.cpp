@@ -9,14 +9,19 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 // Function to receive messages in a separate thread
-void receiveMessages(SOCKET sock);
+void receiveMessages(SOCKET sock, WINDOW* inputWin, WINDOW* outputWin);
 
 /**
  * Asks the user for an IP address and a port # for which to connect to the server with.
  *  */
-std::pair<std::string, int> getIP();
+std::pair<std::string, int> getIP(WINDOW* inputWin, WINDOW* outputWin);
+
+void printToOutput(const char* msg);
 
 bool validateIPandPort(std::string input);
+
+WINDOW* outputWin;
+WINDOW* inputWin;
 
 int main(int argc, char* argv[]) {
 	WSADATA wsaData;
@@ -44,14 +49,21 @@ int main(int argc, char* argv[]) {
 
 	// ncurses start
 	initscr();
+	//noecho();
 
-	WINDOW* textOutput = newwin(20, 100, 0, 0); // For displaying messages
-	WINDOW* textInput = newwin(10, 100, 20, 0); // For typing messages
+	// Borders for input and output windows
+	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);
+	WINDOW* inputBorder = newwin(5, getmaxx(outputBorder), getmaxy(outputBorder), 0);
+
+	outputWin = newwin(23, getmaxx(outputBorder) - 2, 1, 1); // For displaying messages
+	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
 	refresh();
-	box(textInput, 0, 0);
-	box(textOutput, 0, 0);
-	wrefresh(textInput);
-	wrefresh(textOutput);
+	box(outputBorder, 0, 0);
+	box(inputBorder, 0, 0);
+	wrefresh(outputBorder);
+	wrefresh(inputBorder);
+	wrefresh(outputWin);
+	wrefresh(inputWin);
 
 	if (argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
 		ipAndPort.first = argv[1];
@@ -59,10 +71,9 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		// Prompting for IP and Port
-		ipAndPort = getIP();
+		ipAndPort = getIP(inputWin, outputWin);
 	}
 
-	// Open firewall port on remote desktop
 
 	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr); // set IP
 	serverAddr.sin_port = htons(ipAndPort.second); // set Port
@@ -71,7 +82,7 @@ int main(int argc, char* argv[]) {
 	while (connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
 		std::cerr << "Connection failed.\n";
 
-		std::pair<std::string, int> ipAndPort = getIP();
+		std::pair<std::string, int> ipAndPort = getIP(inputWin, outputWin);
 
 		inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr);
 		serverAddr.sin_port = htons(ipAndPort.second);
@@ -79,7 +90,7 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "Connected to server. Type messages, /help for info, or /exit to quit.\n";
 	// Start the receiving thread
-	std::thread receiver(receiveMessages, sock);
+	std::thread receiver(receiveMessages, sock, inputWin, outputWin);
 	receiver.detach();
 
 	// Send loop
@@ -98,7 +109,7 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-void receiveMessages(SOCKET sock) {
+void receiveMessages(SOCKET sock, WINDOW* inputWin, WINDOW* outputWin) {
 	char buffer[1024];
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
@@ -120,16 +131,29 @@ void receiveMessages(SOCKET sock) {
 	WSACleanup();
 }
 
-std::pair<std::string, int> getIP() {
-	std::string ipAndPort{};
-	std::cout << "Enter IP address and Port # > ";
-	std::getline(std::cin, ipAndPort);
+std::pair<std::string, int> getIP(WINDOW* inputWin, WINDOW* outputWin) {
+	char input_str[100];
+	//std::string ipAndPort{};
+	const char* prompt = "Enter IP address and Port #...\n";
+	printToOutput(prompt);
+	wrefresh(outputWin);
+	move(getbegy(inputWin), getbegx(inputWin));
+	getstr(input_str);
+	wrefresh(inputWin);
+	//std::getline(std::cin, ipAndPort);
 
-	while (!validateIPandPort(ipAndPort)) {
-		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n> ", ipAndPort);
-		std::getline(std::cin, ipAndPort);
+	while (!validateIPandPort(input_str)) {
+		std::string error = std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n", input_str);
+		//mvwprintw(outputWin, outputWin->_maxy - 2, 1, error.c_str());
+		printToOutput(error.c_str());
+		wrefresh(outputWin);
+		move(getbegy(inputWin), getbegx(inputWin));
+		getstr(input_str);
+		wrefresh(inputWin);
+		std::cout << std::format("You entered: {}, please try again formatted as 127.0.0.1:54000\n", input_str);
+		//std::getline(std::cin, ipAndPort);
 	}
-
+	std::string ipAndPort = input_str;
 	std::string::size_type split = ipAndPort.find(':');
 
 	return std::pair<std::string, int>(ipAndPort.substr(0, split), std::stoi(ipAndPort.substr(split + 1)));
@@ -140,4 +164,9 @@ bool validateIPandPort(std::string input) {
 	std::regex regex{ R"~(^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3}|0)$)~" };
 
 	return std::regex_match(input, regex);
+}
+
+void printToOutput(const char* msg) {
+	//wprintw(outputWin, msg);
+	waddstr(outputWin, msg);
 }
