@@ -5,6 +5,7 @@
 #include <ws2tcpip.h>
 #include <format>
 #include <thread>
+#include "curses.h"
 #pragma comment(lib, "Ws2_32.lib")
 
 // Function to receive messages in a separate thread
@@ -39,6 +40,18 @@ int main(int argc, char* argv[]) {
 	serverAddr.sin_family = AF_INET;
 
 	std::pair<std::string, int> ipAndPort;
+
+
+	// ncurses start
+	initscr();
+
+	WINDOW* textOutput = newwin(20, 100, 0, 0); // For displaying messages
+	WINDOW* textInput = newwin(10, 100, 20, 0); // For typing messages
+	refresh();
+	box(textInput, 0, 0);
+	box(textOutput, 0, 0);
+	wrefresh(textInput);
+	wrefresh(textOutput);
 
 	if (argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
 		ipAndPort.first = argv[1];
@@ -79,6 +92,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Cleanup
+	endwin();
 	closesocket(sock);
 	WSACleanup();
 	return 0;
