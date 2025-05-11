@@ -210,7 +210,7 @@ std::string getInput() {
 
 void updateRooms(const std::string& rooms) {
 	std::string temp = rooms.substr(1);
-	std::pair<int, int> bounds{ temp.find('>'), temp.find('<') };
+	std::pair<size_t, size_t> bounds{ temp.find('>'), temp.find('<') };
 
 	wclear(roomsWin);
 	wmove(roomsWin, 0, 0); // Move cursor to beginning of roomsWin
