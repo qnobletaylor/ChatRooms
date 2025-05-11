@@ -56,8 +56,7 @@ void tui::receiveMessages() {
 		ZeroMemory(buffer, sizeof(buffer));
 		int bytesReceived = recv(client, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
-			std::string msg(buffer, bytesReceived);
-			if (msg.at(0) == '0') updateRooms(msg);
+			if (buffer[0] == '0') updateRooms(buffer);
 			else printToOutput(buffer);
 		}
 		else if (bytesReceived == 0) {
@@ -74,8 +73,39 @@ void tui::receiveMessages() {
 	WSACleanup();
 };
 
-void tui::printToOutput(const char* msg) {};
+void tui::printToOutput(const char* msg) {
+	waddstr(outputWin, msg); // print msg
+	wrefresh(outputWin); // refresh to appear in window
+};
 
-char tui::getInput() { return '2'; };
+void tui::getInput() { /// Change this !!! ///
+	char inputStr[1024];
+	wgetstr(inputWin, inputStr); // Take line input till \n
+	wclear(inputWin); // clear the window
+	wmove(inputWin, 0, 0); // move cursor back to start of window
+	wrefresh(inputWin); // refresh window
 
-void tui::updateRooms(const std::string& rooms) {};
+	printToOutput(inputStr);
+};
+
+void tui::updateRooms(const char* msg) {
+	wclear(roomsWin);
+	wmove(roomsWin, 0, 0); // Move cursor to beginning of roomsWin
+
+
+	int i = -1;
+
+	while (msg[++i] != '\0') {
+		if (msg[i] == '>') {
+			wattron(roomsWin, A_STANDOUT);
+			continue;
+		}
+		if (msg[i] == '<') {
+			wattroff(roomsWin, A_STANDOUT);
+			continue;
+		}
+		waddch(roomsWin, msg[i]);
+	}
+
+	wrefresh(roomsWin);
+};

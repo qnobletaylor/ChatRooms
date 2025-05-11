@@ -26,8 +26,8 @@ private:
 
 	void receiveMessages();
 	void printToOutput(const char* msg);
-	char getInput();
-	void updateRooms(const std::string& rooms);
+	void getInput();
+	void updateRooms(const char* msg);
 };
 
 #endif
