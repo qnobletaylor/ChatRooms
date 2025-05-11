@@ -62,6 +62,8 @@ int main(int argc, char* argv[]) {
 
 	serverAddr.sin_family = AF_INET;
 
+	std::string duckArt = "   _\n__(~)<\n\\_)_)";
+
 	/* NCURSES INIT */
 	initscr();
 
@@ -69,6 +71,7 @@ int main(int argc, char* argv[]) {
 	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);
 	WINDOW* inputBorder = newwin(5, getmaxx(outputBorder), getmaxy(outputBorder), 0);
 	WINDOW* roomsBorder = newwin(25, 19, 0, getmaxx(outputBorder) + 1);
+	WINDOW* duck = newwin(3, 8, getmaxy(roomsBorder) + 1, getmaxx(inputBorder) + 7); // window for the duck
 
 	outputWin = newwin(23, getmaxx(outputBorder) - 2, 1, 1); // For displaying messages
 	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
@@ -92,6 +95,10 @@ int main(int argc, char* argv[]) {
 	wrefresh(outputWin);
 	wrefresh(inputWin);
 	wrefresh(roomsWin);
+
+
+	waddstr(duck, duckArt.c_str());
+	wrefresh(duck);
 
 	/* END NCURSES INIT */
 
