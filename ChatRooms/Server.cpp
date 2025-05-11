@@ -10,6 +10,8 @@
 #include <map>
 #include <ws2tcpip.h>
 #include <ctime>
+#include <chrono>
+#include <time.h>
 #include <regex>
 #include <mutex>
 #include "Room.h"
@@ -208,18 +210,15 @@ bool validateIPandPort(std::string input) {
 }
 
 std::string getTime() {
-	time_t currentTime;
-	struct tm localTime;
+	struct tm tmNow;
+	time_t currentTime = std::time(nullptr);
+	gmtime_s(&tmNow, &currentTime); // Convert to UTC
 
-	currentTime = std::time(nullptr);
-	localtime_s(&localTime, &currentTime);
+	std::stringstream s{};
 
-	std::string min = ((localTime.tm_min / 10) == 0) ? ("0" + std::to_string(localTime.tm_min)) : std::to_string(localTime.tm_min);
-	std::string hour = ((localTime.tm_hour % 12) / 10) == 0 ? ("0" + std::to_string(localTime.tm_hour % 12)) : std::to_string((localTime.tm_hour % 12));
-	std::string sec = ((localTime.tm_sec / 10) == 0) ? ("0" + std::to_string(localTime.tm_sec)) : std::to_string(localTime.tm_sec);
-	std::string timeStamp = std::format("{}:{}:{}", hour, min, sec);
+	s << std::put_time(&tmNow, "%r"); //Formats as 12-Hr Time HH:mm:ss
 
-	return timeStamp;
+	return s.str();
 }
 
 User createUser(SOCKET clientSocket) {
