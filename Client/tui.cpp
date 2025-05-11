@@ -9,6 +9,7 @@ void tui::drawUI() {
 
 	/* NCURSES INIT */
 	initscr();
+	noecho();
 
 	// Borders for input and output windows
 	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);
@@ -52,14 +53,17 @@ void tui::drawUI() {
 	receiverThread.detach();
 
 	// Main thread handling input
-	std::string msg{};
+	/*std::string msg{};
 	while (true) {
 
 		msg = getInput();
 
 		send(server, msg.c_str(), msg.size(), 0);
 
-	}
+	}*/
+
+	wmove(inputWin, 0, 0);
+	getInput();
 
 	endwin();
 }
@@ -93,15 +97,81 @@ void tui::printToOutput(const char* msg) {
 };
 
 std::string tui::getInput() { /// Change this !!! ///
-	char inputStr[1024];
+	char msg[1024];
+	int cursor = 0;
+	char c;
+	ZeroMemory(msg, sizeof(msg));
 
-	wgetstr(inputWin, inputStr); // Take line input till \n
-	wclear(inputWin); // clear the window
-	wmove(inputWin, 0, 0); // move cursor back to start of window
-	wrefresh(inputWin); // refresh window
+	while (true) {
+		c = wgetch(inputWin);
 
-	return inputStr;
+		switch (c) {
+		case '\n': {
+			msg[++cursor] = '\0';
+			send(server, msg, sizeof(msg), 0);
+			ZeroMemory(msg, sizeof(msg));
+			cursor = 0;
+			wclear(inputWin);
+			wmove(inputWin, 0, 0);
+			wrefresh(inputWin);
+			break;
+		}
+		case KEY_BACKSPACE: {
+			if (cursor > 0) {
+				backSpace();
+				msg[--cursor] = NULL;
+			}
+			break;
+		}
+		case 127: {
+			if (cursor > 0) {
+				backSpace();
+				msg[--cursor] = '\0';
+			}
+			break;
+		}
+		case 8: {
+			if (cursor > 0) {
+				backSpace();
+				msg[--cursor] = '\0';
+			}
+			break;
+		}
+		default: {
+			if (cursor < sizeof(msg) - 1) {
+				newInput(c);
+				msg[cursor++] = c;
+			}
+		}
+		}
+	}
+
+	//wgetstr(inputWin, inputStr); // Take line input till \n
+	//wclear(inputWin); // clear the window
+	//wmove(inputWin, 0, 0); // move cursor back to start of window
+	//wrefresh(inputWin); // refresh window
+
+	//return inputStr;
 };
+
+void tui::backSpace() {
+	wmove(inputWin, getcury(inputWin), getcurx(inputWin) - 1);
+	wdelch(inputWin);
+	wrefresh(inputWin);
+}
+
+void tui::newInput(char c) {
+	wprintw(inputWin, "%c", c);
+	/*int y, x;
+	getyx(inputWin, y, x);
+	if (x == getmaxx(inputWin) - 1 && y < getmaxy(inputWin))
+		wmove(inputWin, getcury(inputWin) + 1, 0);
+	else
+		wmove(inputWin, getcury(inputWin), getcurx(inputWin) + 1);*/
+
+	wrefresh(inputWin);
+}
+
 
 void tui::updateRooms(const char* msg) {
 	wclear(roomsWin);

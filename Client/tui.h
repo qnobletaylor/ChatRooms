@@ -8,8 +8,9 @@
 #include "curses.h"
 #pragma comment(lib, "Ws2_32.lib")
 
-
-
+/**
+ * Class representing the textual ui using ncurses.
+ */
 class tui
 {
 public:
@@ -26,6 +27,8 @@ private:
 
 	void printToOutput(const char* msg);
 	std::string getInput();
+	void backSpace();
+	void newInput(char c);
 	void updateRooms(const char* msg);
 };
 
