@@ -45,8 +45,20 @@ void tui::drawUI() {
 	waddstr(duck, duckArt.c_str());
 	wrefresh(duck);
 
+	printToOutput("Connected to server. Type messages, /help for info, or /exit to quit.\n");
+
+	// Thread handling output from server
+	std::thread receiverThread(receiveMessages, client);
+	receiverThread.detach();
+
+	// Main thread handling input
+	bool exitCondition = false;
+	while (exitCondition == false) {
+		exitCondition = getInput();
+	}
+
 	/* END NCURSES INIT */
-	getch();
+	getch(); // TEMP //
 	endwin();
 }
 
@@ -78,7 +90,7 @@ void tui::printToOutput(const char* msg) {
 	wrefresh(outputWin); // refresh to appear in window
 };
 
-void tui::getInput() { /// Change this !!! ///
+bool tui::getInput() { /// Change this !!! ///
 	char inputStr[1024];
 	wgetstr(inputWin, inputStr); // Take line input till \n
 	wclear(inputWin); // clear the window

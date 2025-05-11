@@ -26,7 +26,7 @@ private:
 
 	void receiveMessages();
 	void printToOutput(const char* msg);
-	void getInput();
+	bool getInput();
 	void updateRooms(const char* msg);
 };
 
