@@ -36,6 +36,7 @@ std::string getInput();
  */
 void updateRooms(const std::string& rooms);
 
+// Global variables
 WINDOW* outputWin;
 WINDOW* inputWin;
 WINDOW* roomsWin;
@@ -66,10 +67,6 @@ int main(int argc, char* argv[]) {
 
 	/* NCURSES INIT */
 	initscr();
-	//cbreak();
-	//noecho();
-
-
 
 	// Borders for input and output windows
 	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);

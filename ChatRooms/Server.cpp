@@ -4,14 +4,13 @@
 #include <format>
 #include <sstream>
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #include <thread>
 #include <vector>
 #include <set>
 #include <map>
-#include <ws2tcpip.h>
 #include <ctime>
 #include <chrono>
-#include <time.h>
 #include <regex>
 #include <mutex>
 #include "Room.h"
@@ -32,18 +31,11 @@
  *		- Or simply basic string array[], and have a function which keeps track of size, probably better to use a list so that removing and replacing
  *		nodes will be O(1)
  *
- *
- *		> User commands <
- *		- Add command to list all users in a room, list users in server, possibly send direct msg to another user.
- *
  *		> server commands <
  *		- Add server only commands, such as kick user, move user, move all users. Just some ideas.
  *
  *		> Audio ** <
  *		- Maybe text to speech
- *
- *
- *		- Server needs to remove users when they leave or timeout... if not then they will get duplicate sends because their socket info is still saved
  */
 
 
@@ -62,14 +54,18 @@ std::string help{
 	"\tFor example to create a new room use /CREATE_ROOM Study (commands are case insensitive)\n"
 };
 
+/**
+ * Prompts in console for the IP and port for which the server will listen on.
+ */
 std::pair<std::string, int> getIP();
 
+/**
+ * Takes a string and using regex will return true if it matches a valid IP and port (0.0.0.0:0-65535).
+ */
 bool validateIPandPort(std::string input);
 
 /**
- * Gets the current time and formats it into a string of "hour:min:sec"
- *
- * I will likely move this function to client side. Also need to make it a bit more succint..
+ * Gets the current time in UTC and formats it into a string of "hour:min:sec"
  */
 std::string getTime();
 
@@ -109,15 +105,18 @@ void userCommand(const std::string& cmd, User& user);
 std::string usersToString(std::string roomName = "Server");
 
 /**
- * Returns a string listing all rooms in the server as well as an indicator (<) for which room the user is in.
+ * Returns a string listing all rooms in the server as well as an indicator (>Room<) for which room the user is in.
  */
 std::string listRooms(const User& user);
 
+/**
+ * Removes a user from the room they're currently in and the server usernameList, also calls updateClientRoomList().
+ */
 void removeUser(User& user);
 
 /**
  * Sends a string representation of rooms on the server to each client.
- *  */
+ */
 void updateClientRoomList();
 
 int main(int argc, char* argv[]) {
