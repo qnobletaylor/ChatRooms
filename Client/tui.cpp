@@ -1,9 +1,7 @@
 #include "tui.h"
 
-tui::tui(SOCKET client) {
-	this->client = client;
-
-
+tui::tui(SOCKET server) {
+	this->server = server;
 }
 
 void tui::drawUI() {
@@ -45,20 +43,24 @@ void tui::drawUI() {
 	waddstr(duck, duckArt.c_str());
 	wrefresh(duck);
 
+	/* END NCURSES INIT */
+
 	printToOutput("Connected to server. Type messages, /help for info, or /exit to quit.\n");
 
 	// Thread handling output from server
-	std::thread receiverThread(receiveMessages, client);
+	std::thread receiverThread(&tui::receiveMessages, this);
 	receiverThread.detach();
 
 	// Main thread handling input
-	bool exitCondition = false;
-	while (exitCondition == false) {
-		exitCondition = getInput();
+	std::string msg{};
+	while (true) {
+
+		msg = getInput();
+
+		send(server, msg.c_str(), msg.size(), 0);
+
 	}
 
-	/* END NCURSES INIT */
-	getch(); // TEMP //
 	endwin();
 }
 
@@ -66,7 +68,7 @@ void tui::receiveMessages() {
 	char buffer[1024];
 	while (true) {
 		ZeroMemory(buffer, sizeof(buffer));
-		int bytesReceived = recv(client, buffer, sizeof(buffer), 0);
+		int bytesReceived = recv(server, buffer, sizeof(buffer), 0);
 		if (bytesReceived > 0) {
 			if (buffer[0] == '0') updateRooms(buffer);
 			else printToOutput(buffer);
@@ -81,7 +83,7 @@ void tui::receiveMessages() {
 		}
 	}
 
-	closesocket(client);
+	closesocket(server);
 	WSACleanup();
 };
 
@@ -90,14 +92,15 @@ void tui::printToOutput(const char* msg) {
 	wrefresh(outputWin); // refresh to appear in window
 };
 
-bool tui::getInput() { /// Change this !!! ///
+std::string tui::getInput() { /// Change this !!! ///
 	char inputStr[1024];
+
 	wgetstr(inputWin, inputStr); // Take line input till \n
 	wclear(inputWin); // clear the window
 	wmove(inputWin, 0, 0); // move cursor back to start of window
 	wrefresh(inputWin); // refresh window
 
-	printToOutput(inputStr);
+	return inputStr;
 };
 
 void tui::updateRooms(const char* msg) {
@@ -105,7 +108,7 @@ void tui::updateRooms(const char* msg) {
 	wmove(roomsWin, 0, 0); // Move cursor to beginning of roomsWin
 
 
-	int i = -1;
+	int i = 0;
 
 	while (msg[++i] != '\0') {
 		if (msg[i] == '>') {

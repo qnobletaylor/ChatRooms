@@ -67,8 +67,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	tui clientUI(sock);
-	clientUI.drawUI();
+	clientUI.drawUI(); // Start ncurses
 
+	std::cout << "Exiting client...\n";
 	// Cleanup
 	closesocket(sock);
 	WSACleanup();

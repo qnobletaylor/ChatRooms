@@ -13,20 +13,19 @@
 class tui
 {
 public:
-	tui() {};
-	tui(SOCKET client);
+	tui(SOCKET server);
 
 	void drawUI();
-
+	void receiveMessages();
 private:
-	SOCKET client;
+	SOCKET server;
 	WINDOW* outputWin{};
 	WINDOW* inputWin{};
 	WINDOW* roomsWin{};
 
-	void receiveMessages();
+
 	void printToOutput(const char* msg);
-	bool getInput();
+	std::string getInput();
 	void updateRooms(const char* msg);
 };
 
