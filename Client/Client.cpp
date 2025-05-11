@@ -62,9 +62,6 @@ int main(int argc, char* argv[]) {
 
 	serverAddr.sin_family = AF_INET;
 
-	std::pair<std::string, int> ipAndPort;
-
-
 	/* NCURSES INIT */
 	initscr();
 
@@ -98,6 +95,8 @@ int main(int argc, char* argv[]) {
 
 	/* END NCURSES INIT */
 
+	std::pair<std::string, int> ipAndPort;
+
 	if (argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
 		ipAndPort.first = argv[1];
 		ipAndPort.second = std::stoi(argv[2]);
@@ -106,7 +105,6 @@ int main(int argc, char* argv[]) {
 		// Prompting for IP and Port
 		ipAndPort = getIP();
 	}
-
 
 	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr); // set IP
 	serverAddr.sin_port = htons(ipAndPort.second); // set Port
@@ -191,8 +189,6 @@ bool validateIPandPort(std::string input) {
 void printToOutput(const char* msg) {
 	waddstr(outputWin, msg); // print msg
 	wrefresh(outputWin); // refresh to appear in window
-	//wmove(inputWin, 0, 0); // move cursor back to input
-	//wrefresh(inputWin); // refresh to see new cursor position
 }
 
 std::string getInput() {
@@ -207,10 +203,22 @@ std::string getInput() {
 
 void updateRooms(const std::string& rooms) {
 	std::string temp = rooms.substr(1);
+	std::pair<int, int> bounds{ temp.find('>'), temp.find('<') };
 
+	wclear(roomsWin);
 	wmove(roomsWin, 0, 0); // Move cursor to beginning of roomsWin
-	waddstr(roomsWin, temp.c_str()); // print to roomsWin
+
+	for (int i = 0; i < temp.length(); i++) {
+		if (i == bounds.first) {
+			wattron(roomsWin, A_STANDOUT);
+			continue;
+		}
+		if (i == bounds.second) {
+			wattroff(roomsWin, A_STANDOUT);
+			continue;
+		}
+		waddch(roomsWin, temp[i]);
+	}
+
 	wrefresh(roomsWin);
-	//wmove(inputWin, 0, 0); // move cursor back to inputWin
-	//wrefresh(inputWin);
 }

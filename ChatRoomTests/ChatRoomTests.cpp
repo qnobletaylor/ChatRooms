@@ -58,12 +58,10 @@ TEST(UserTest, comparisons) {
 
 TEST(RoomTest, constructors) {
 	Room testRoom1("Room1");
-	User testUser{};
-	Room testRoom2("Room2", testUser);
+	Room testRoom2{};
 
 	EXPECT_EQ(testRoom1.getName(), "Room1");
-	EXPECT_EQ(testRoom2.getName(), "Room2");
-	EXPECT_EQ(testRoom2.getCreator(), testUser);
+	EXPECT_EQ(testRoom2.getName(), "Lobby");
 }
 
 TEST(RoomTest, addUser) {
@@ -114,31 +112,13 @@ TEST(RoomTest, moveUser) {
 	EXPECT_EQ(testUser.currentRoom, "Room2");
 }
 
-TEST(RoomTest, getCreator) {
-	User testUser{}, testUser2{};
-	testUser2.username = "test";
-	Room testRoom1("Room1", testUser);
-	testRoom1.addUser(testUser2);
-
-	EXPECT_EQ(testRoom1.getCreator(), testUser);
-	EXPECT_NE(testRoom1.getCreator(), testUser2);
-}
-
 TEST(RoomTest, getSize) {
 	User testUser{};
-	Room testRoom1("Room1", testUser);
+	Room testRoom1("Room1");
+	testRoom1.addUser(testUser);
 
 	EXPECT_EQ(testRoom1.getSize(), 1);
 }
-
-TEST(RoomTest, changeName) {
-	User testUser{};
-	Room testRoom1("Room1", testUser);
-
-	EXPECT_TRUE(testRoom1.changeName(testUser, "Room2"));
-	EXPECT_EQ(testRoom1.getName(), "Room2");
-}
-
 
 
 
