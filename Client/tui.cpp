@@ -1,4 +1,5 @@
 #include "tui.h"
+#include <sstream>
 
 tui::tui(SOCKET server) {
 	this->server = server;
@@ -10,6 +11,7 @@ void tui::drawUI() {
 	/* NCURSES INIT */
 	initscr();
 	noecho();
+	cbreak();
 
 	// Borders for input and output windows
 	WINDOW* outputBorder = newwin(25, getmaxx(stdscr) - 20, 0, 0);
@@ -21,12 +23,13 @@ void tui::drawUI() {
 	inputWin = newwin(3, getmaxx(inputBorder) - 2, getbegy(inputBorder) + 1, 1); // For typing messages
 	roomsWin = newwin(23, getmaxx(roomsBorder) - 2, 1, getbegx(roomsBorder) + 1);
 
+
 	scrollok(outputWin, true); // allows the text to continue scrolling outside of the window
 	leaveok(outputWin, true); // Don't show cursor when printing in this window
 	leaveok(roomsWin, true);
 	curs_set(1); // show cursor
 	refresh();
-
+	keypad(inputWin, true); // Detect arrow keys for moving left and right in unsubmitted text
 	// Draw Borders
 	box(outputBorder, 0, 0);
 	box(inputBorder, 0, 0);
@@ -51,16 +54,6 @@ void tui::drawUI() {
 	// Thread handling output from server
 	std::thread receiverThread(&tui::receiveMessages, this);
 	receiverThread.detach();
-
-	// Main thread handling input
-	/*std::string msg{};
-	while (true) {
-
-		msg = getInput();
-
-		send(server, msg.c_str(), msg.size(), 0);
-
-	}*/
 
 	wmove(inputWin, 0, 0);
 	getInput();
@@ -96,25 +89,29 @@ void tui::printToOutput(const char* msg) {
 	wrefresh(outputWin); // refresh to appear in window
 };
 
-std::string tui::getInput() { /// Change this !!! ///
-	char msg[1024];
-	int cursor = 0;
-	char c;
+void tui::sendToServer(const char* msg) {
+	send(server, msg, sizeof(msg), 0); // Send whats in the buffer
+	wclear(inputWin); // clear input win
+	wmove(inputWin, 0, 0);
+	wrefresh(inputWin);
+}
+
+std::string tui::getInput() {
+	char msg[1024]; // Store the message, up to 1023 characters
+	int cursor = 0; // Position within the buffer
+	wchar_t c; // char to store
 	ZeroMemory(msg, sizeof(msg));
 
 	while (true) {
 		c = wgetch(inputWin);
 
 		switch (c) {
-		case '\n': {
-			send(server, msg, sizeof(msg), 0);
-			ZeroMemory(msg, sizeof(msg));
-			cursor = 0;
-			wclear(inputWin);
-			wmove(inputWin, 0, 0);
-			wrefresh(inputWin);
+		case '\n': { // On pressing enter
+			sendToServer(msg);
+			ZeroMemory(msg, sizeof(msg)); // zero our buffer
 			break;
 		}
+				 /* Handling three different backspace characters */
 		case KEY_BACKSPACE: {
 			if (cursor > 0) {
 				backSpace();
@@ -136,6 +133,7 @@ std::string tui::getInput() { /// Change this !!! ///
 			}
 			break;
 		}
+			  /* end of backspace handling */
 		default: {
 			if (cursor < sizeof(msg) - 1) {
 				newInput(c);
@@ -144,30 +142,20 @@ std::string tui::getInput() { /// Change this !!! ///
 		}
 		}
 	}
-
-	//wgetstr(inputWin, inputStr); // Take line input till \n
-	//wclear(inputWin); // clear the window
-	//wmove(inputWin, 0, 0); // move cursor back to start of window
-	//wrefresh(inputWin); // refresh window
-
-	//return inputStr;
 };
 
 void tui::backSpace() {
-	wmove(inputWin, getcury(inputWin), getcurx(inputWin) - 1);
-	wdelch(inputWin);
+	int y, x;
+	getyx(inputWin, y, x);
+
+	if (x == 0 && y > 0 && y <= getmaxy(inputWin)) mvwdelch(inputWin, y - 1, getmaxx(inputWin) - 1); // backspace for when on second or third line
+	else mvwdelch(inputWin, y, x - 1);
+
 	wrefresh(inputWin);
 }
 
 void tui::newInput(char c) {
 	wprintw(inputWin, "%c", c);
-	/*int y, x;
-	getyx(inputWin, y, x);
-	if (x == getmaxx(inputWin) - 1 && y < getmaxy(inputWin))
-		wmove(inputWin, getcury(inputWin) + 1, 0);
-	else
-		wmove(inputWin, getcury(inputWin), getcurx(inputWin) + 1);*/
-
 	wrefresh(inputWin);
 }
 
@@ -179,7 +167,7 @@ void tui::updateRooms(const char* msg) {
 
 	int i = 0;
 
-	while (msg[++i] != '\0') {
+	while (msg[++i] != '\0') { // Highlights the room the user is in
 		if (msg[i] == '>') {
 			wattron(roomsWin, A_STANDOUT);
 			continue;

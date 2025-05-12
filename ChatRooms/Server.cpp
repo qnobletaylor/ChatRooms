@@ -298,7 +298,7 @@ void handleClient(SOCKET clientSocket) {
 			break;
 		}
 		else {
-			std::cout << user.username << " recv error, removed from server.";
+			std::cout << user.username << " recv error, removed from server.\n";
 			removeUser(user);
 			break;
 		}
