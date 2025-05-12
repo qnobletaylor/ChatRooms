@@ -26,7 +26,6 @@ private:
 
 
 	void printToOutput(const char* msg);
-	void sendToServer(const char* msg);
 	std::string getInput();
 	void backSpace();
 	void newInput(char c);

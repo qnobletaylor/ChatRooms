@@ -42,8 +42,9 @@ int main(int argc, char* argv[]) {
 
 	serverAddr.sin_family = AF_INET;
 
-	std::pair<std::string, int> ipAndPort;
+	std::pair<std::string, int> ipAndPort; // Store ip and port
 
+	// Checking for ip and port passed as command line args
 	if (argc >= 2 && validateIPandPort(std::format("{}:{}", argv[1], argv[2]))) {
 		ipAndPort.first = argv[1];
 		ipAndPort.second = std::stoi(argv[2]);
@@ -66,8 +67,9 @@ int main(int argc, char* argv[]) {
 		serverAddr.sin_port = htons(ipAndPort.second);
 	}
 
+	// Create and start text UI with ncurses
 	tui clientUI(sock);
-	clientUI.drawUI(); // Start ncurses
+	clientUI.drawUI();
 
 	std::cout << "Exiting client...\n";
 	// Cleanup

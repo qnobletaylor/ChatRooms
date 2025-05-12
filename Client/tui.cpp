@@ -89,13 +89,6 @@ void tui::printToOutput(const char* msg) {
 	wrefresh(outputWin); // refresh to appear in window
 };
 
-void tui::sendToServer(const char* msg) {
-	send(server, msg, sizeof(msg), 0); // Send whats in the buffer
-	wclear(inputWin); // clear input win
-	wmove(inputWin, 0, 0);
-	wrefresh(inputWin);
-}
-
 std::string tui::getInput() {
 	char msg[1024]; // Store the message, up to 1023 characters
 	int cursor = 0; // Position within the buffer
@@ -107,8 +100,13 @@ std::string tui::getInput() {
 
 		switch (c) {
 		case '\n': { // On pressing enter
-			sendToServer(msg);
+			send(server, msg, sizeof(msg), 0); // Send whats in the buffer
+			wclear(inputWin); // clear input win
+			wmove(inputWin, 0, 0);
+			wrefresh(inputWin);
+
 			ZeroMemory(msg, sizeof(msg)); // zero our buffer
+			cursor = 0;
 			break;
 		}
 				 /* Handling three different backspace characters */
