@@ -5,7 +5,7 @@ tui::tui(SOCKET server) {
 }
 
 void tui::drawUI() {
-	std::string duckArt = "   _\n__(~)<\n\\_)_)";
+	std::string duckArt = "   _\n__(~)<\n\\_)_)"; // quack
 
 	/* NCURSES INIT */
 	initscr();
@@ -107,7 +107,6 @@ std::string tui::getInput() { /// Change this !!! ///
 
 		switch (c) {
 		case '\n': {
-			msg[++cursor] = '\0';
 			send(server, msg, sizeof(msg), 0);
 			ZeroMemory(msg, sizeof(msg));
 			cursor = 0;
@@ -119,7 +118,7 @@ std::string tui::getInput() { /// Change this !!! ///
 		case KEY_BACKSPACE: {
 			if (cursor > 0) {
 				backSpace();
-				msg[--cursor] = NULL;
+				msg[--cursor] = '\0';
 			}
 			break;
 		}

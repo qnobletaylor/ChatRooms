@@ -232,7 +232,7 @@ User createUser(SOCKET clientSocket) {
 		bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
 	} while (bytesReceived <= 0);
 
-	std::string msg(buffer, bytesReceived);
+	std::string msg(buffer);
 
 	std::string takenUserPrompt = (msg + " is already taken, please choose another name...\n");
 
@@ -247,6 +247,9 @@ User createUser(SOCKET clientSocket) {
 		else msg = std::string(buffer, bytesReceived);
 	}
 
+	std::cout << "Size of msg, " << msg.size() << "\n";
+	msg.shrink_to_fit();
+	std::cout << "Size of msg after shrink, " << msg.size() << "\n";
 
 	return User(msg, clientSocket);
 }
@@ -281,7 +284,7 @@ void handleClient(SOCKET clientSocket) {
 		int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
 
 		if (bytesReceived > 0) {
-			Message msg{ std::string(buffer, bytesReceived), getTime() };
+			Message msg{ std::string(buffer), getTime() };
 
 			if (msg.message.at(0) == '/') userCommand(msg.message, user);
 			else {
