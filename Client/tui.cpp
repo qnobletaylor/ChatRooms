@@ -1,3 +1,10 @@
+/**
+ * @file   tui.cpp
+ * @author Quinlin Taylor (CSC-284)
+ * @date   5/14/2025
+ * @brief  This file contains all method definitions for the \link tui.h \endlink file and class.
+ */
+
 #include "tui.h"
 #include <sstream>
 
@@ -89,10 +96,10 @@ void tui::printToOutput(const char* msg) {
 	wrefresh(outputWin); // refresh to appear in window
 };
 
-std::string tui::getInput() {
+void tui::getInput() {
 	char msg[1024]; // Store the message, up to 1023 characters
 	int cursor = 0; // Position within the buffer
-	wchar_t c; // char to store
+	char c; // char to store
 	ZeroMemory(msg, sizeof(msg));
 
 	while (true) {
@@ -110,7 +117,7 @@ std::string tui::getInput() {
 			break;
 		}
 				 /* Handling three different backspace characters */
-		case KEY_BACKSPACE: {
+		case (char)KEY_BACKSPACE: {
 			if (cursor > 0) {
 				backSpace();
 				msg[--cursor] = '\0';
@@ -134,7 +141,7 @@ std::string tui::getInput() {
 			  /* end of backspace handling */
 		default: {
 			if (cursor < sizeof(msg) - 1) {
-				newInput(c);
+				sendInput(c);
 				msg[cursor++] = c;
 			}
 		}
@@ -152,7 +159,7 @@ void tui::backSpace() {
 	wrefresh(inputWin);
 }
 
-void tui::newInput(char c) {
+void tui::sendInput(char c) {
 	wprintw(inputWin, "%c", c);
 	wrefresh(inputWin);
 }

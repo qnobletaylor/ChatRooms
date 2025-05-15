@@ -1,3 +1,10 @@
+/**
+ * @file Client.cpp
+ * @author Quinlin Taylor (CSC-284)
+ * @date 05/14/2025
+ * @brief This file contains the startup main function for the client side program which allows the user to connect to the server.
+ */
+
 #include <iostream>
 #include <string>
 #include <regex>
@@ -9,14 +16,19 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 
-
-/**
- * Asks the user for an IP address and a port # for which to connect to the server with.
- *  */
+ /**
+ * @brief If an IP and Port # are not given as command line arguments at runtime then the server prompts for an IP and Port.
+ *
+ * @return std::pair<std::string, int> a pair of an IP(string) and port(int) so long as they are valid.
+ */
 std::pair<std::string, int> getIP();
 
 /**
- * Validates a string so that it matches a regex which checks that the string is an ip and port within range, ex 0.0.0.0:[0-65535].
+ * @brief Takes a string and checks it against a regex which will check if the string is formatted as a proper IP and Port #, ex. 0.0.0.0:0-65535.
+ *
+ * @param input , the string to validate.
+ * @return true if the port and ip # are passed as a valid IP and port #
+ * @return false if the port and ip are out of range or input invalidly
  */
 bool validateIPandPort(std::string input);
 
@@ -50,8 +62,7 @@ int main(int argc, char* argv[]) {
 		ipAndPort.second = std::stoi(argv[2]);
 	}
 	else {
-		// Prompting for IP and Port
-		ipAndPort = getIP();
+		ipAndPort = getIP(); // Prompting for IP and Port
 	}
 
 	inet_pton(AF_INET, ipAndPort.first.c_str(), &serverAddr.sin_addr); // set IP

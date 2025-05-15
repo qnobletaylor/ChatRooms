@@ -1,3 +1,10 @@
+/**
+ * @file   Server.cpp
+ * @author Quinlin Taylor (CSC-284)
+ * @date   5/14/2025
+ * @brief  This file contains the main function as well as all functions for handling client connections to the server.
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -17,33 +24,29 @@
 #include "User.h"
 #pragma comment(lib, "ws2_32.lib")
 
-
+ /* GLOBALS */
 
 /**
- * TODO
- *		- Look up *Object Pools*
- *
- *		> History <
- *		- Create a form of history for all sent messages, so that when new users connect then on joining the user can get
- *		a brief history of chat.
- *		- Cap the size of the number of messages stored, so the oldest messages will be tossed out
- *		- This could be stored in the form of a hashmap<User, List<String>> So you could also query the server to give all messages sent by a specific user.
- *		- Or simply basic string array[], and have a function which keeps track of size, probably better to use a list so that removing and replacing
- *		nodes will be O(1)
- *
- *		> server commands <
- *		- Add server only commands, such as kick user, move user, move all users. Just some ideas.
- *
- *		> Audio ** <
- *		- Maybe text to speech
+ * @brief a mutex for locking the global set of stored usernames.
  */
-
-
- // Let's figure out a way to make these not globals if possible.
-std::mutex usernameListMutex, roomListMutex;
-std::set<std::string> usernameList{}; // Global variable for connected users
-std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} }; // Initial room which all users start in will be known as the lobby
-std::string help{
+static std::mutex usernameListMutex;
+/**
+ * @brief a mutex for locking the global hashmap of stored rooms.
+ */
+static std::mutex roomListMutex;
+/**
+ * @brief a set which stores all the usernames of clients connected to the server.
+ */
+static std::set<std::string> usernameList{};
+/**
+ * @brief a hashmap storing all rooms created on the server by connected clients, by default a Lobby room is created on run-time.
+ * The key for the map is a string representing the room name and the value is the room object itself.
+ */
+static std::map<std::string, Room> roomList{ {"Lobby", Room("Lobby")} };
+/**
+ * @brief MAN style help string, sent to clients when the /help command is received by the server.
+ */
+const static std::string help{
 	"\t\t** List of Commands **\n\n"
 	"CREATE_ROOM <name>\n\tCreate a new room and move to it.\n"
 	"JOIN_ROOM <name>\n\tMove to another existing room.\n"
@@ -54,68 +57,101 @@ std::string help{
 	"\tFor example to create a new room use /CREATE_ROOM Study (commands are case insensitive)\n"
 };
 
+/* END GLOBALS */
+
 /**
- * Prompts in console for the IP and port for which the server will listen on.
+ * @brief If an IP and Port # are not given as command line arguments at runtime then the server prompts for an IP and Port.
+ *
+ * @return std::pair<std::string, int> a pair of an IP(string) and port(int) so long as they are valid.
  */
 std::pair<std::string, int> getIP();
 
-/**
- * Takes a string and using regex will return true if it matches a valid IP and port (0.0.0.0:0-65535).
- */
+
 bool validateIPandPort(std::string input);
 
 /**
- * Gets the current time in UTC and formats it into a string of "hour:min:sec"
+ * @brief Takes a string and checks it against a regex which will check if the string is formatted as a proper IP and Port #, ex. 0.0.0.0:0-65535.
+ *
+ * @param input , the string to validate.
+ * @return true if the port and ip # are passed as a valid IP and port #
+ * @return false if the port and ip are out of range or input invalidly
  */
 std::string getTime();
 
 /**
- * Asks a client for user information and saves their username alongside that client's socket.
+ * @brief When a connection is made to the server this function prompts the client for a username and checks if that name is already in use.
+ * If the name is not taken a User object is created storing that username, the client socket, and their current room.
+ *
+ * @param clientSocket the socket from which the new connection is made.
+ * @return User the newly created User tied to the new client connection.
  */
 User createUser(SOCKET clientSocket);
 
 /**
- * Accepts new client connections and starts a new thread using handleClient with the clientSocket which connected.
+ * @brief On runtime a thead gets created and this function is executed by the thread to always allow new connections to the server.
+ *
+ * @param serverSocket this server's socket with which to make a new connection with incoming clients.
  */
 void acceptClients(SOCKET serverSocket);
 
 /**
- * Handles receiving data from a client which connects to the server.
+ * @brief For each new connection a thread is created and this function is executed to handle incoming data from the client.
+ * This function also handles sending data back to all clients on the server when a message is received from the thread tied to this client.
+ *
+ * @param clientSocket the client's socket to receive data from.
  */
 void handleClient(SOCKET clientSocket);
 
 /**
- * Broadcast a mesage to a room, given a room name and the message.
+ * @brief This function simply loops through the list of all Users in a room and sends a given message to each user in that room.
+ *
+ * @param roomName the name of the room to broadcast to.
+ * @param msg the message getting sent to each client currently in the given room name.
  */
 void broadcastToRoom(const std::string& roomName, const std::string& msg);
 
 /**
- * Broadcasts a message to every room on the server so long as it's not empty.
+ * @brief This function sends a message to all clients currently connected to the server.
+ *
+ * @param msg the message sent to all connected clients.
  */
 void broadcastToServer(const std::string& msg);
 
 /**
- * Handles commands sent by a client.
+ * @brief This function is called when a command is sent by a User, the message is parsed into the cmd and arguments given and then depending on the cmd differing actions will occur.
+ *
+ * @param cmd the string received from a client which includes a command.
+ * @param user the User who sent the command.
  */
 void userCommand(const std::string& cmd, User& user);
 
 /**
- * Returns a string formatted list of users within a given room.
+ * @brief Loops creates a neatly formatted string representation of all users in the server or if arguments are given, all users within a room.
+ *
+ * @param roomName the name of a room to return the current users, defaults to "Server" which will return all users on the server.
+ * @return std::string the formatted string of users.
  */
 std::string usersToString(std::string roomName = "Server");
 
 /**
- * Returns a string listing all rooms in the server as well as an indicator (>Room<) for which room the user is in.
+ * @brief Creates a neatly formatted string of the rooms which currently exist on the server as well as the number of users in each room.
+ *
+ * @param user the passed User arg will include an indicator for the room that user is currently in.
+ * @return std::string the formatted list of rooms.
  */
 std::string listRooms(const User& user);
 
 /**
- * Removes a user from the room they're currently in and the server usernameList, also calls updateClientRoomList().
+ * @brief This function only gets called internally when a user disconnects intentionally or when the server loses connection with the client socket.
+ * The client which has disconnected will be removed from all references to that client.
+ *
+ * @param user the User object connected to the client which got disconnected.
  */
 void removeUser(User& user);
 
 /**
- * Sends a string representation of rooms on the server to each client.
+ * @brief This function is called any time that a user creates a new room or a user changes rooms. Will broadcast a serverwide message calling \link listRooms \endlink
+ * which indicates for each client the updated room list as well as how many clients are in each room.
  */
 void updateClientRoomList();
 
@@ -148,8 +184,7 @@ int main(int argc, char* argv[]) {
 		ipAndPort.second = std::stoi(argv[2]);
 	}
 	else {
-		// Prompting for IP and Port
-		ipAndPort = getIP();
+		ipAndPort = getIP(); // Prompting for IP and Port
 	}
 
 	serverAddr.sin_port = htons(ipAndPort.second);
@@ -355,7 +390,7 @@ void userCommand(const std::string& msg, User& user) {
 			std::string infoServer = std::format("{} created new room {}\n", user.username, param);
 			broadcastToRoom(user.currentRoom, informRoom); // Inform room that a user has left
 
-			//std::lock_guard<std::mutex> guard(roomListMutex);
+			std::lock_guard<std::mutex> guard(roomListMutex);
 			roomList[param] = Room(param); // Create new room
 			Room::moveUser(user, roomList[user.currentRoom], roomList[param]); // Move user to the new room
 

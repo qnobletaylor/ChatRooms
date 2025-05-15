@@ -1,3 +1,10 @@
+/**
+ * @file   Room.cpp
+ * @author Quinlin Taylor (CSC-284)
+ * @date   5/14/2025
+ * @brief  This file includes all definitions for the \link Room.h \endlink file and class.
+ */
+
 #include "Room.h"
 #include <mutex>
 
@@ -13,7 +20,7 @@ bool Room::removeUser(const User& user) {
 bool Room::addUser(User& user) {
 	std::lock_guard<std::mutex> guard(mutex);
 	user.currentRoom = name;
-	return userList.insert(user).second; // Check if emplace vs insert would be better (i.e. copy or move?)
+	return userList.insert(user).second;
 }
 
 bool Room::hasUser(const User& user) const {
@@ -22,7 +29,6 @@ bool Room::hasUser(const User& user) const {
 }
 
 bool Room::moveUser(User& user, Room& current, Room& dest) {
-	// I'm thinking that there doesn't need to be a lock in this method due to other methods being called already containing locks
 	if (current.hasUser(user)) {
 		current.removeUser(user);
 		return dest.addUser(user);
