@@ -359,7 +359,7 @@ void broadcastToServer(const std::string& msg) {
 }
 
 void updateClientRoomList() {
-	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // temporary fix
+	std::this_thread::sleep_for(std::chrono::milliseconds(500)); // temporary fix
 	std::string msg{};
 	for (const auto& room : roomList) {
 		if (room.second.getUsers().empty());

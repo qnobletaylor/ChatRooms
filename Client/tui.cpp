@@ -32,8 +32,8 @@ void tui::drawUI() {
 
 
 	scrollok(outputWin, true); // allows the text to continue scrolling outside of the window
-	leaveok(outputWin, true); // Don't show cursor when printing in this window
-	leaveok(roomsWin, true);
+	//leaveok(outputWin, true); // Don't show cursor when printing in this window
+	//leaveok(roomsWin, true);
 	curs_set(1); // show cursor
 	refresh();
 	keypad(inputWin, true); // Detect arrow keys for moving left and right in unsubmitted text
@@ -93,6 +93,8 @@ void tui::receiveMessages() {
 
 void tui::printToOutput(const char* msg) {
 	waddstr(outputWin, msg); // print msg
+	wmove(inputWin, 0, 0);
+	wrefresh(inputWin);
 	wrefresh(outputWin); // refresh to appear in window
 };
 
@@ -183,6 +185,8 @@ void tui::updateRooms(const char* msg) {
 		}
 		waddch(roomsWin, msg[i]);
 	}
+	wmove(inputWin, 0, 0);
 
+	wrefresh(inputWin);
 	wrefresh(roomsWin);
 };
