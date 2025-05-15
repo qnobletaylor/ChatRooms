@@ -4,6 +4,8 @@
 ---
 This project consists of both a Server and Client application. Both applications when ran from the command line will take IP and Port arguments or can be ran without arguments which will allow for IP and Port to be given during run-time. The server-side application will allow many client connections concurrently. When a client connects they are prompted for a username which will be unique to that client until they disconnect. Clients have the opportunity to create rooms within the server which will allow chat to only be shared between other clients within the same room.
 
+![Example of the client application](https://i.imgur.com/917d4UB.png)
+
 ### Features
 ---
 - Client Textual UI
